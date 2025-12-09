@@ -48,6 +48,22 @@ export const getGuards = query({
   },
 });
 
+// Get available guards only (for alert assignment)
+export const getAvailableGuards = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("users")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("role"), "guard"),
+          q.eq(q.field("active"), true),
+          q.eq(q.field("available"), true)
+        )
+      )
+      .collect();
+  },
+});
+
 // Create a new user
 export const createUser = mutation({
   args: {
@@ -73,6 +89,7 @@ export const createUser = mutation({
       name: args.name,
       role: args.role,
       active: true,
+      available: args.role === "guard" ? true : undefined, // Guards default to available
       createdAt: Date.now(),
     });
   },
@@ -112,5 +129,20 @@ export const deleteUser = mutation({
   args: { userId: v.id("users") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.userId);
+  },
+});
+
+// Toggle guard availability (available/away)
+export const toggleAvailability = mutation({
+  args: { 
+    userId: v.id("users"),
+    available: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db.get(args.userId);
+    if (!user || user.role !== "guard") {
+      throw new Error("Can only toggle availability for guards");
+    }
+    await ctx.db.patch(args.userId, { available: args.available });
   },
 });

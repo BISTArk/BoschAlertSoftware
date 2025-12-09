@@ -36,7 +36,7 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
   const [selectedGuard, setSelectedGuard] = useState<string>("");
   const [notes, setNotes] = useState("");
 
-  const guards = useQuery(api.auth.getGuards);
+  const guards = useQuery(api.auth.getAvailableGuards);
   const assignAlert = useMutation(api.alerts.assignAlert);
   const reassignAlert = useMutation(api.alerts.reassignAlert);
   const updateStatus = useMutation(api.alerts.updateAlertStatus);
@@ -64,6 +64,7 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
       setSelectedGuard("");
     } catch (error) {
       console.error("Failed to assign alert:", error);
+      alert(error instanceof Error ? error.message : "Failed to assign alert. Please try again.");
     }
   };
 

@@ -18,3 +18,21 @@ export default internalMutation(async (ctx) => {
 
   return { message: "Migration completed", alertsUpdated: updated, totalAlerts: alerts.length };
 });
+
+// Migration to set all guards as available by default
+// Run with: npx convex run migrations:setGuardsAvailable
+export const setGuardsAvailable = internalMutation({
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    
+    let updated = 0;
+    for (const user of users) {
+      if (user.role === "guard" && user.available === undefined) {
+        await ctx.db.patch(user._id, { available: true });
+        updated++;
+      }
+    }
+    
+    return { message: "Migration completed", guardsUpdated: updated };
+  },
+});

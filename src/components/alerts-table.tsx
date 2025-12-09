@@ -26,7 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Download, RefreshCw, ChevronDown, Filter, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 export function AlertsTable() {
   const { user } = useAuth();
@@ -37,8 +37,44 @@ export function AlertsTable() {
   // Filter states
   const [statusFilter, setStatusFilter] = useState<string>("")
   const [searchQuery, setSearchQuery] = useState<string>("")
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>("")
   const [eventCodeFilter, setEventCodeFilter] = useState<string>("")
+  const [debouncedEventCodeFilter, setDebouncedEventCodeFilter] = useState<string>("")
   const [accountFilter, setAccountFilter] = useState<string>("")
+  const [debouncedAccountFilter, setDebouncedAccountFilter] = useState<string>("")
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+      setPaginationCursor(undefined);
+      setPageStack([undefined]);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Debounce event code filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedEventCodeFilter(eventCodeFilter);
+      setPaginationCursor(undefined);
+      setPageStack([undefined]);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [eventCodeFilter]);
+
+  // Debounce account filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedAccountFilter(accountFilter);
+      setPaginationCursor(undefined);
+      setPageStack([undefined]);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [accountFilter]);
 
   // Build filters based on user role and filter selections
   const filters: any = {};
@@ -50,9 +86,9 @@ export function AlertsTable() {
   
   // Apply additional filters
   if (statusFilter) filters.status = statusFilter;
-  if (searchQuery) filters.searchQuery = searchQuery;
-  if (eventCodeFilter) filters.eventCode = eventCodeFilter;
-  if (accountFilter) filters.accountNumber = accountFilter;
+  if (debouncedSearchQuery) filters.searchQuery = debouncedSearchQuery;
+  if (debouncedEventCodeFilter) filters.eventCode = debouncedEventCodeFilter;
+  if (debouncedAccountFilter) filters.accountNumber = debouncedAccountFilter;
 
   // Real-time query - automatically updates when new data arrives
   const alertsResult = useQuery(api.alerts.getAlerts, {
@@ -64,6 +100,7 @@ export function AlertsTable() {
   })
 
   const totalCount = useQuery(api.alerts.getAlertsCount)
+  const filteredCount = useQuery(api.alerts.getFilteredAlertsCount, { filters })
   
   // Fetch all alerts for full export (with same filters)
   const allAlerts = useQuery(api.alerts.getAlerts, {
@@ -79,27 +116,27 @@ export function AlertsTable() {
 
     const headers = [
       "Received At",
-      "Protocol",
-      "Account Number",
+      "Customer Account",
+      "Event Qualifier",
       "Event Code",
       "Event Description",
-      "Zone",
-      "Message Timestamp",
-      "Receiver",
-      "Checksum",
+      "Event Category",
+      "Priority",
+      "Zone ID",
+      "Partition",
       "Raw Message",
     ]
 
     const rows = dataToExport.map((alert) => [
       new Date(alert.receivedAt).toLocaleString(),
-      alert.protocol,
-      alert.accountNumber,
-      alert.eventCode,
+      alert.customerAccount || alert.accountNumber || "",
+      alert.eventQualifier || "",
+      alert.contactIdEventCode || alert.eventCode || "",
       alert.eventDescription || "",
-      alert.zone || "",
-      alert.messageTimestamp,
-      alert.receiver || "",
-      alert.checksum || "",
+      alert.eventCategory || "",
+      alert.priority || "",
+      alert.zoneId || alert.zone || "",
+      alert.partitionNumber || alert.partition || "",
       alert.rawMessage,
     ])
 
@@ -159,7 +196,7 @@ export function AlertsTable() {
     setPageStack([undefined]);
   };
 
-  const hasActiveFilters = statusFilter || searchQuery || eventCodeFilter || accountFilter;
+  const hasActiveFilters = statusFilter || debouncedSearchQuery || debouncedEventCodeFilter || debouncedAccountFilter;
 
   return (
     <div className="space-y-4">
@@ -171,11 +208,7 @@ export function AlertsTable() {
             <Input
               placeholder="Search alerts..."
               value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                setPaginationCursor(undefined);
-                setPageStack([undefined]);
-              }}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="max-w-xs"
             />
           </div>
@@ -202,22 +235,14 @@ export function AlertsTable() {
           <Input
             placeholder="Event code..."
             value={eventCodeFilter}
-            onChange={(e) => {
-              setEventCodeFilter(e.target.value);
-              setPaginationCursor(undefined);
-              setPageStack([undefined]);
-            }}
+            onChange={(e) => setEventCodeFilter(e.target.value)}
             className="w-[120px]"
           />
 
           <Input
             placeholder="Account #..."
             value={accountFilter}
-            onChange={(e) => {
-              setAccountFilter(e.target.value);
-              setPaginationCursor(undefined);
-              setPageStack([undefined]);
-            }}
+            onChange={(e) => setAccountFilter(e.target.value)}
             className="w-[120px]"
           />
 
@@ -233,7 +258,13 @@ export function AlertsTable() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground">
-            Total Alerts: {totalCount || 0}
+            {hasActiveFilters ? (
+              <>
+                Filtered: {filteredCount || 0} / Total: {totalCount || 0}
+              </>
+            ) : (
+              <>Total Alerts: {totalCount || 0}</>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Show:</span>
@@ -272,7 +303,7 @@ export function AlertsTable() {
               Export Current Page ({alertsResult?.page.length || 0} items)
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => exportToCSV(true)}>
-              Export All Data ({totalCount || 0} items)
+              Export All {hasActiveFilters ? 'Filtered' : ''} Data ({hasActiveFilters ? (filteredCount || 0) : (totalCount || 0)} items)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -284,13 +315,13 @@ export function AlertsTable() {
             <TableRow>
               <TableHead>Received At</TableHead>
               <TableHead>Status</TableHead>
-              <TableHead>Protocol</TableHead>
-              <TableHead>Account</TableHead>
+              <TableHead>Priority</TableHead>
+              <TableHead>Customer Account</TableHead>
               <TableHead>Event</TableHead>
               <TableHead>Description</TableHead>
-              <TableHead>Zone</TableHead>
-              <TableHead>Timestamp</TableHead>
-              <TableHead>Receiver</TableHead>
+              <TableHead>Zone ID</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Qualifier</TableHead>
               <TableHead>Raw Message</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -319,23 +350,54 @@ export function AlertsTable() {
                   );
                 };
 
+                const getPriorityBadge = (priority?: string) => {
+                  const colors = {
+                    critical: "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200",
+                    high: "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200",
+                    medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                    low: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                  };
+                  if (!priority) return "-";
+                  return (
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[priority as keyof typeof colors]}`}>
+                      {priority}
+                    </span>
+                  );
+                };
+
                 return (
                   <TableRow key={alert._id}>
                     <TableCell className="font-medium">
                       {new Date(alert.receivedAt).toLocaleString()}
                     </TableCell>
                     <TableCell>{getStatusBadge(alert.status)}</TableCell>
-                    <TableCell>{alert.protocol}</TableCell>
-                    <TableCell>{alert.accountNumber}</TableCell>
+                    <TableCell>{getPriorityBadge(alert.priority)}</TableCell>
+                    <TableCell>{alert.customerAccount || alert.accountNumber || "-"}</TableCell>
                     <TableCell>
                       <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
-                        {alert.eventCode}
+                        {alert.contactIdEventCode || alert.eventCode || "-"}
                       </span>
                     </TableCell>
-                    <TableCell>{alert.eventDescription}</TableCell>
-                    <TableCell>{alert.zone || "-"}</TableCell>
-                    <TableCell className="text-sm">{alert.messageTimestamp}</TableCell>
-                    <TableCell>{alert.receiver || "-"}</TableCell>
+                    <TableCell className="max-w-xs truncate">{alert.eventDescription || "-"}</TableCell>
+                    <TableCell>
+                      <span className="font-mono text-xs">
+                        {alert.zoneId || alert.zone || "-"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-sm">{alert.eventCategory || "-"}</TableCell>
+                    <TableCell>
+                      {alert.eventQualifier === "E" ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200">
+                          New
+                        </span>
+                      ) : alert.eventQualifier === "R" ? (
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200">
+                          Restore
+                        </span>
+                      ) : (
+                        "-"
+                      )}
+                    </TableCell>
                     <TableCell className="font-mono text-xs max-w-xs truncate">
                       {alert.rawMessage}
                     </TableCell>
@@ -357,8 +419,17 @@ export function AlertsTable() {
       {alertsResult.page.length > 0 && (
         <div className="flex items-center justify-between">
           <div className="text-sm text-muted-foreground">
-            Page {pageStack.length} {totalCount && itemsPerPage ? `/ ${Math.ceil(totalCount / itemsPerPage)}` : ''}
-            {totalCount && ` • Showing ${(pageStack.length - 1) * itemsPerPage + 1}-${Math.min(pageStack.length * itemsPerPage, totalCount)} of ${totalCount}`}
+            {(() => {
+              const count = hasActiveFilters ? (filteredCount || 0) : (totalCount || 0);
+              const startItem = (pageStack.length - 1) * itemsPerPage + 1;
+              const endItem = Math.min(pageStack.length * itemsPerPage, count);
+              return (
+                <>
+                  Page {pageStack.length} {count && itemsPerPage ? `/ ${Math.ceil(count / itemsPerPage)}` : ''}
+                  {count > 0 && ` • Showing ${startItem}-${endItem} of ${count}`}
+                </>
+              );
+            })()}
           </div>
           <div className="flex gap-2">
             <Button

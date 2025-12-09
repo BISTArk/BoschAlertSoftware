@@ -1,62 +1,99 @@
+import { useState } from "react"
+import { DashboardNew } from "@/components/DashboardNew"
 import { AlertsTable } from "@/components/alerts-table"
-import { AlertsStats } from "@/components/alerts-stats"
-import { ThemeToggle } from "@/components/theme-toggle"
 import { Login } from "@/components/Login"
+import { SiteMapPage } from "@/components/SiteMapPage"
+import { Sidebar } from "@/components/Sidebar"
+import { TopHeader } from "@/components/TopHeader"
+import { GuardAvailabilityToggle } from "@/components/GuardAvailabilityToggle"
+import { TestAlertGenerator } from "@/components/TestAlertGenerator"
 import { useAuth } from "@/contexts/AuthContext"
-import { AlertCircle, LogOut } from "lucide-react"
-import { Button } from "@/components/ui/button"
 
 function App() {
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
+  const [currentView, setCurrentView] = useState<string>("dashboard");
 
   if (!user) {
     return <Login />;
   }
 
-  return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <AlertCircle className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-2xl font-bold">Bosch Alert Hub</h1>
+  const renderContent = () => {
+    switch (currentView) {
+      case "dashboard":
+        return (
+          <>
+            {user.role === "guard" && <GuardAvailabilityToggle />}
+            <DashboardNew />
+          </>
+        );
+      case "alerts":
+        return (
+          <>
+            {user.role === "guard" && <GuardAvailabilityToggle />}
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-2">All Security Alerts</h2>
               <p className="text-sm text-muted-foreground">
-                SIA DC-09 Message Monitor
+                Complete table view of all SIA messages received via TCP/UDP connections
               </p>
             </div>
+            <AlertsTable />
+          </>
+        );
+      case "locations":
+        return <SiteMapPage />;
+      case "sensors":
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-2">Sensors Management</h2>
+            <p className="text-muted-foreground">Configure and monitor all security sensors</p>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-sm">
-              <div className="font-medium">{user.name}</div>
-              <div className="text-muted-foreground capitalize">{user.role}</div>
+        );
+      case "escalations":
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-2">Escalations</h2>
+            <p className="text-muted-foreground">Manage alert escalation rules and workflows</p>
+          </div>
+        );
+      case "reports":
+        return (
+          <div className="text-center py-12">
+            <h2 className="text-2xl font-bold mb-2">Reports</h2>
+            <p className="text-muted-foreground">Generate and view security reports and analytics</p>
+          </div>
+        );
+      case "admin":
+        return (
+          <div className="space-y-6">
+            <div className="text-center py-6">
+              <h2 className="text-2xl font-bold mb-2">Admin Panel</h2>
+              <p className="text-muted-foreground">System administration and user management</p>
             </div>
-            <ThemeToggle />
-            <Button variant="outline" size="sm" onClick={logout}>
-              <LogOut className="h-4 w-4 mr-2" />
-              Logout
-            </Button>
+            <div className="flex justify-center">
+              <TestAlertGenerator />
+            </div>
           </div>
-        </div>
-      </header>
+        );
+      default:
+        return <DashboardNew />;
+    }
+  };
 
-      <main className="container mx-auto px-4 py-8">
-        <AlertsStats />
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Sidebar */}
+      <Sidebar currentView={currentView} onNavigate={setCurrentView} />
+      
+      {/* Main Content Area */}
+      <div className="ml-64">
+        {/* Top Header */}
+        <TopHeader />
         
-        <div className="mb-6">
-          <h2 className="text-xl font-semibold mb-2">Security Alerts</h2>
-          <p className="text-sm text-muted-foreground">
-            Real-time monitoring of SIA messages received via TCP/UDP connections
-          </p>
-        </div>
-        <AlertsTable />
-      </main>
-
-      <footer className="border-t mt-auto">
-        <div className="container mx-auto px-4 py-4 text-center text-sm text-muted-foreground">
-          Listening on TCP/UDP Port 4000
-        </div>
-      </footer>
+        {/* Main Content */}
+        <main className="pt-16 p-6">
+          {renderContent()}
+        </main>
+      </div>
     </div>
   )
 }
