@@ -1,5 +1,6 @@
 import { useQuery } from "convex/react"
 import { api } from "../../convex/_generated/api"
+import type { Id } from "../../convex/_generated/dataModel"
 import { useAuth } from "@/contexts/AuthContext"
 import { AlertActions } from "@/components/AlertActions"
 import {
@@ -28,7 +29,11 @@ import {
 import { Download, RefreshCw, ChevronDown, Filter, X } from "lucide-react"
 import { useState, useEffect } from "react"
 
-export function AlertsTable() {
+interface AlertsTableProps {
+  onAlertClick?: (alertId: Id<"alerts">) => void;
+}
+
+export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
   const { user } = useAuth();
   const [paginationCursor, setPaginationCursor] = useState<string | undefined>(undefined)
   const [pageStack, setPageStack] = useState<(string | undefined)[]>([undefined])
@@ -366,7 +371,11 @@ export function AlertsTable() {
                 };
 
                 return (
-                  <TableRow key={alert._id}>
+                  <TableRow 
+                    key={alert._id}
+                    className="cursor-pointer hover:bg-accent/50 transition-colors"
+                    onClick={() => onAlertClick?.(alert._id)}
+                  >
                     <TableCell className="font-medium">
                       {new Date(alert.receivedAt).toLocaleString()}
                     </TableCell>

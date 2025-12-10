@@ -21,6 +21,7 @@ export const createContactIdAlert = mutation({
     eventType: v.optional(v.string()),
     eventDescription: v.optional(v.string()),
     priority: v.optional(v.string()),
+    assignedTo: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     // Try to find matching sensor by zone ID
@@ -61,7 +62,8 @@ export const createContactIdAlert = mutation({
       floorId,
       receivedAt: Date.now(),
       acknowledged: false,
-      status: "unassigned" as const,
+      status: args.assignedTo ? "assigned" as const : "unassigned" as const,
+      assignedTo: args.assignedTo,
     });
     return alertId;
   },

@@ -20,7 +20,7 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
   const { user } = useAuth();
 
   const navigationItems = [
-    { id: "dashboard", label: "Dashboard", icon: LayoutDashboard, roles: ["guard", "head", "admin"] },
+    { id: "dashboard", label: "Home", icon: LayoutDashboard, roles: ["guard", "head", "admin"] },
     { id: "alerts", label: "Alerts", icon: AlertCircle, roles: ["guard", "head", "admin"] },
     { id: "locations", label: "Locations", icon: MapPin, roles: ["head", "admin"] },
     { id: "sensors", label: "Sensors", icon: Radio, roles: ["head", "admin"] },

@@ -6,8 +6,9 @@
  */
 
 import { useState } from "react";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
+import type { Id } from "../../convex/_generated/dataModel";
 import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
@@ -21,7 +22,9 @@ export function TestAlertGenerator() {
   const [eventCode, setEventCode] = useState("301"); // AC Loss
   const [partition, setPartition] = useState("00");
   const [zoneId, setZoneId] = useState("001");
+  const [assignedTo, setAssignedTo] = useState<string>("unassigned");
 
+  const guards = useQuery(api.auth.getAvailableGuards);
   const createContactIdAlert = useMutation(api.alerts.createContactIdAlert);
 
   const handleGenerateAlert = async () => {
@@ -48,6 +51,7 @@ export function TestAlertGenerator() {
         eventType: parsed.eventType,
         eventDescription: parsed.eventDescription,
         priority: parsed.priority,
+        assignedTo: assignedTo !== "unassigned" ? (assignedTo as Id<"users">) : undefined,
       });
       
       alert(`Alert created: ${generateAlertMessage(parsed)}`);
@@ -139,6 +143,23 @@ export function TestAlertGenerator() {
               placeholder="001"
               maxLength={3}
             />
+          </div>
+
+          <div className="col-span-2">
+            <Label htmlFor="assignedTo">Assign to Guard (Optional)</Label>
+            <Select value={assignedTo} onValueChange={setAssignedTo}>
+              <SelectTrigger id="assignedTo">
+                <SelectValue placeholder="Unassigned" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="unassigned">Unassigned</SelectItem>
+                {guards?.map((guard) => (
+                  <SelectItem key={guard._id} value={guard._id}>
+                    {guard.name} ({guard.role})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

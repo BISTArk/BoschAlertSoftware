@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { DashboardNew } from "@/components/DashboardNew"
 import { AlertsTable } from "@/components/alerts-table"
+import { AlertDetailView } from "@/components/AlertDetailView"
 import { Login } from "@/components/Login"
 import { SiteMapPage } from "@/components/SiteMapPage"
 import { Sidebar } from "@/components/Sidebar"
@@ -8,10 +9,12 @@ import { TopHeader } from "@/components/TopHeader"
 import { GuardAvailabilityToggle } from "@/components/GuardAvailabilityToggle"
 import { TestAlertGenerator } from "@/components/TestAlertGenerator"
 import { useAuth } from "@/contexts/AuthContext"
+import type { Id } from "../convex/_generated/dataModel"
 
 function App() {
   const { user } = useAuth();
   const [currentView, setCurrentView] = useState<string>("dashboard");
+  const [selectedAlertId, setSelectedAlertId] = useState<Id<"alerts"> | null>(null);
 
   if (!user) {
     return <Login />;
@@ -20,13 +23,29 @@ function App() {
   const renderContent = () => {
     switch (currentView) {
       case "dashboard":
+        if (selectedAlertId) {
+          return (
+            <AlertDetailView
+              alertId={selectedAlertId}
+              onBack={() => setSelectedAlertId(null)}
+            />
+          );
+        }
         return (
           <>
             {user.role === "guard" && <GuardAvailabilityToggle />}
-            <DashboardNew />
+            <DashboardNew onAlertClick={(id) => setSelectedAlertId(id)} />
           </>
         );
       case "alerts":
+        if (selectedAlertId) {
+          return (
+            <AlertDetailView
+              alertId={selectedAlertId}
+              onBack={() => setSelectedAlertId(null)}
+            />
+          );
+        }
         return (
           <>
             {user.role === "guard" && <GuardAvailabilityToggle />}
@@ -36,7 +55,7 @@ function App() {
                 Complete table view of all SIA messages received via TCP/UDP connections
               </p>
             </div>
-            <AlertsTable />
+            <AlertsTable onAlertClick={(id) => setSelectedAlertId(id)} />
           </>
         );
       case "locations":

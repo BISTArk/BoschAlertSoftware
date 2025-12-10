@@ -3,18 +3,23 @@ import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/AuthContext";
-import { FloorPlanCanvas } from "@/components/FloorPlanCanvas";
+import { AreaMapView } from "@/components/AreaMapView";
 import { StatsCards } from "@/components/StatsCards";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AlertCircle } from "lucide-react";
 
-export function DashboardNew() {
+interface DashboardNewProps {
+  onAlertClick?: (alertId: Id<"alerts">) => void;
+}
+
+export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
   const { user } = useAuth();
   const [selectedFloor, setSelectedFloor] = useState<Id<"floors"> | null>(null);
-  const [selectedAlertId, setSelectedAlertId] = useState<Id<"alerts"> | null>(null);
   const [mapFilter, setMapFilter] = useState<"all" | "alerts">("all");
+  const [activeTab, setActiveTab] = useState<"alerts" | "events">("alerts");
 
   // Fetch data
   const firstFloor = useQuery(api.siteMap.getFirstFloor);
@@ -22,18 +27,7 @@ export function DashboardNew() {
     paginationOpts: { numItems: 100 },
   });
   const allUsers = useQuery(api.auth.getUsers);
-  const sensors = useQuery(
-    api.siteMap.getSensorsByFloor,
-    selectedFloor ? { floorId: selectedFloor } : "skip"
-  );
-  const floor = useQuery(
-    api.siteMap.getFloor,
-    selectedFloor ? { floorId: selectedFloor } : "skip"
-  );
-  const guards = useQuery(
-    api.siteMap.getGuardsOnFloor,
-    selectedFloor ? { floorId: selectedFloor } : "skip"
-  );
+
 
   // Auto-select first floor
   useEffect(() => {
@@ -60,7 +54,7 @@ export function DashboardNew() {
   const filteredAlerts = getFilteredAlerts();
 
   const handleAlertClick = (alert: any) => {
-    setSelectedAlertId(alert._id);
+    onAlertClick?.(alert._id);
   };
 
   const getStatusBadgeColor = (status: string) => {
@@ -104,7 +98,7 @@ export function DashboardNew() {
   };
 
   // Get account numbers for alerts that should be highlighted
-  const alertAccountNumbers = filteredAlerts.map((a) => a.customerAccount || a.accountNumber);
+
 
   return (
     <div className="space-y-6">
@@ -137,40 +131,18 @@ export function DashboardNew() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {selectedFloor && sensors && floor ? (
-              <div className="h-[600px] relative">
-                <FloorPlanCanvas
-                  floorPlanImage={floor.floorPlanUrl}
-                  sensors={sensors.map(s => ({
-                    _id: s._id,
-                    name: s.name,
-                    accountNumber: s.accountNumber,
-                    x: s.positionX,
-                    y: s.positionY,
-                    status: s.active ? "active" : "inactive"
-                  }))}
-                  guards={guards?.map(g => ({
-                    _id: g._id,
-                    name: g.name,
-                    available: g.available
-                  }))}
-                  highlightAlertId={selectedAlertId}
-                  alertAccountNumbers={alertAccountNumbers.filter((a): a is string => a !== undefined)}
-                  width={800}
-                  height={600}
-                  floorWidth={floor.width}
-                  floorHeight={floor.height}
-                />
-              </div>
-            ) : (
-              <div className="h-[600px] flex items-center justify-center text-muted-foreground">
-                <div className="text-center">
-                  <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>No site map available</p>
-                  <p className="text-sm">Configure sites in Locations</p>
-                </div>
-              </div>
-            )}
+            <div className="h-[600px] relative">
+              <AreaMapView
+                alerts={filteredAlerts.map(a => ({
+                  _id: a._id,
+                  customerAccount: a.customerAccount,
+                  accountNumber: a.accountNumber,
+                  severity: a.severity,
+                  eventDescription: a.eventDescription,
+                  status: a.status
+                }))}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -187,57 +159,127 @@ export function DashboardNew() {
             <p className="text-sm text-muted-foreground">Real-time security events</p>
           </CardHeader>
           <CardContent className="p-0">
-            <div className="max-h-[600px] overflow-y-auto">
-              {filteredAlerts.length === 0 ? (
-                <div className="p-6 text-center text-muted-foreground">
-                  <p className="text-sm">No active alerts</p>
-                </div>
-              ) : (
-                <div className="space-y-0">
-                  {filteredAlerts.map((alert, index) => {
-                    const threat = getThreatLevel(alert.contactIdEventCode || alert.eventCode, alert.priority);
-                    const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
-                    const isSelected = selectedAlertId === alert._id;
-                    
-                    return (
-                      <div
-                        key={alert._id}
-                        className={`p-4 cursor-pointer transition-colors border-b border-border hover:bg-accent/50 ${
-                          isSelected ? "bg-accent" : ""
-                        } ${index === 0 ? "" : ""}`}
-                        onClick={() => handleAlertClick(alert)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className={`w-2 h-2 rounded-full mt-2 ${threat.color}`} />
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="text-sm font-semibold truncate">
-                                {alert.eventDescription || alert.eventCode}
-                              </h4>
-                              <Badge
-                                className={`text-xs ml-2 ${getStatusBadgeColor(alert.status || "unassigned")}`}
-                                variant="outline"
-                              >
-                                {alert.status === "in-progress" ? "In Progress" : alert.status || "Unassigned"}
-                              </Badge>
+            <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "alerts" | "events")} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 rounded-none border-b">
+                <TabsTrigger value="alerts" className="rounded-none">
+                  Alerts
+                  <Badge variant="secondary" className="ml-2">
+                    {filteredAlerts.filter(a => a.eventQualifier !== "R").length}
+                  </Badge>
+                </TabsTrigger>
+                <TabsTrigger value="events" className="rounded-none">
+                  Events
+                  <Badge variant="secondary" className="ml-2">
+                    {filteredAlerts.filter(a => a.eventQualifier === "R").length}
+                  </Badge>
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="alerts" className="mt-0">
+                <div className="max-h-[520px] overflow-y-auto">
+                  {filteredAlerts.filter(a => a.eventQualifier !== "R").length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground">
+                      <p className="text-sm">No active alerts</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0">
+                      {filteredAlerts
+                        .filter(alert => alert.eventQualifier !== "R")
+                        .map((alert, index) => {
+                          const threat = getThreatLevel(alert.contactIdEventCode || alert.eventCode, alert.priority);
+                          const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
+                          
+                          return (
+                            <div
+                              key={alert._id}
+                              className={`p-4 cursor-pointer transition-colors border-b border-border hover:bg-accent/50 ${index === 0 ? "" : ""}`}
+                              onClick={() => handleAlertClick(alert)}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className={`w-2 h-2 rounded-full mt-2 ${threat.color}`} />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <h4 className="text-sm font-semibold truncate">
+                                      {alert.eventDescription || alert.eventCode}
+                                    </h4>
+                                    <Badge
+                                      className={`text-xs ml-2 ${getStatusBadgeColor(alert.status || "unassigned")}`}
+                                      variant="outline"
+                                    >
+                                      {alert.status === "in-progress" ? "In Progress" : alert.status || "Unassigned"}
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    📍 {alert.customerAccount || alert.accountNumber || "N/A"} {(alert.zoneId || alert.zone) && `- Zone ${alert.zoneId || alert.zone}`}
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
+                                    {assignedUser && (
+                                      <span className="text-primary">👤 {assignedUser.name}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              📍 {alert.customerAccount || alert.accountNumber || "N/A"} {(alert.zoneId || alert.zone) && `- Zone ${alert.zoneId || alert.zone}`}
-                            </p>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground">
-                              <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
-                              {assignedUser && (
-                                <span className="text-primary">👤 {assignedUser.name}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                          );
+                        })}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+              
+              <TabsContent value="events" className="mt-0">
+                <div className="max-h-[520px] overflow-y-auto">
+                  {filteredAlerts.filter(a => a.eventQualifier === "R").length === 0 ? (
+                    <div className="p-6 text-center text-muted-foreground">
+                      <p className="text-sm">No events recorded</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-0">
+                      {filteredAlerts
+                        .filter(alert => alert.eventQualifier === "R")
+                        .map((alert, index) => {
+                          const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
+                          
+                          return (
+                            <div
+                              key={alert._id}
+                              className={`p-4 cursor-pointer transition-colors border-b border-border hover:bg-accent/50 ${index === 0 ? "" : ""}`}
+                              onClick={() => handleAlertClick(alert)}
+                            >
+                              <div className="flex items-start gap-3">
+                                <div className="w-2 h-2 rounded-full mt-2 bg-green-500" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <h4 className="text-sm font-semibold truncate">
+                                      {alert.eventDescription || alert.eventCode} - Restored
+                                    </h4>
+                                    <Badge
+                                      className="text-xs ml-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                      variant="outline"
+                                    >
+                                      Restore
+                                    </Badge>
+                                  </div>
+                                  <p className="text-xs text-muted-foreground mb-1">
+                                    📍 {alert.customerAccount || alert.accountNumber || "N/A"} {(alert.zoneId || alert.zone) && `- Zone ${alert.zoneId || alert.zone}`}
+                                  </p>
+                                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                                    <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
+                                    {assignedUser && (
+                                      <span className="text-primary">👤 {assignedUser.name}</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>

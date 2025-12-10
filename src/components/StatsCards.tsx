@@ -1,7 +1,7 @@
 import { useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import { Card } from "@/components/ui/card";
-import { Flame, AlertTriangle, Clock, WifiOff } from "lucide-react";
+import { Flame, AlertTriangle, Clock, CheckCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function StatsCards() {
@@ -22,6 +22,7 @@ export function StatsCards() {
   };
 
   const filteredAlerts = getFilteredAlerts();
+  const isGuard = user?.role === "guard";
 
   // Calculate stats using new priority field
   const criticalAlerts = filteredAlerts.filter(
@@ -32,23 +33,21 @@ export function StatsCards() {
     (a) => a.priority === "high" && a.status !== "resolved"
   ).length;
 
-  const unassignedAlerts = filteredAlerts.filter(
-    (a) => a.status === "unassigned"
-  ).length;
+  // For guards: show assigned alerts count, For admins/heads: show unassigned alerts count
+  const assignedOrUnassignedAlerts = isGuard
+    ? filteredAlerts.filter((a) => a.status === "assigned").length
+    : filteredAlerts.filter((a) => a.status === "unassigned").length;
 
-  // Count offline sensors (sensor troubles and communication issues)
-  const offlineSensors = filteredAlerts.filter(
-    (a) => (
-      a.eventCategory === "Sensor" || 
-      a.eventCategory === "Communication Troubles"
-    ) && a.status !== "resolved"
+  // Count closed/resolved alerts
+  const closedAlerts = filteredAlerts.filter(
+    (a) => a.status === "resolved"
   ).length;
 
   const stats = [
     {
       title: "Critical Alerts",
       value: criticalAlerts,
-      subtitle: "Last 24 hours",
+      subtitle: isGuard ? "Assigned to me" : "Last 24 hours",
       icon: Flame,
       iconBg: "bg-red-500/10",
       iconColor: "text-red-500",
@@ -57,28 +56,28 @@ export function StatsCards() {
     {
       title: "High Priority Alerts",
       value: highPriorityAlerts,
-      subtitle: "Last 24 hours",
+      subtitle: isGuard ? "Assigned to me" : "Last 24 hours",
       icon: AlertTriangle,
       iconBg: "bg-orange-500/10",
       iconColor: "text-orange-500",
       trend: "up",
     },
     {
-      title: "Unassigned Alerts",
-      value: unassignedAlerts,
-      subtitle: "Last 24 hours",
+      title: isGuard ? "Assigned Alerts" : "Unassigned Alerts",
+      value: assignedOrUnassignedAlerts,
+      subtitle: isGuard ? "Pending action" : "Last 24 hours",
       icon: Clock,
       iconBg: "bg-yellow-500/10",
       iconColor: "text-yellow-500",
       trend: "neutral",
     },
     {
-      title: "Offline Sensors",
-      value: offlineSensors,
-      subtitle: "Last 24 hours",
-      icon: WifiOff,
-      iconBg: "bg-gray-500/10",
-      iconColor: "text-gray-500",
+      title: "Closed Alerts",
+      value: closedAlerts,
+      subtitle: isGuard ? "Resolved by me" : "Last 24 hours",
+      icon: CheckCircle,
+      iconBg: "bg-green-500/10",
+      iconColor: "text-green-500",
       trend: "neutral",
     },
   ];
