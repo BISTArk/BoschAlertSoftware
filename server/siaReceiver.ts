@@ -20,8 +20,9 @@ const REMOTE_HOST = process.env.REMOTE_HOST || "127.0.0.1"; // For client mode: 
 const REMOTE_PORT = parseInt(process.env.REMOTE_PORT || "7800"); // For client mode: Port to connect to
 const CONVEX_SITE_URL = process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
 
-// ACK response byte (standard acknowledgment)
-const ACK_BYTE = Buffer.from([0x06]);
+// Protocol bytes
+const LF = 0x0A;  // Line Feed [10]
+const CR = 0x0D;  // Carriage Return [13]
 
 /**
  * Store SIA DC-09 alert in Convex database
@@ -70,6 +71,93 @@ async function storeSiaDC09Alert(parsed: ReturnType<typeof parseSiaDC09>): Promi
 }
 
 /**
+ * Calculate CRC16-CCITT checksum
+ */
+function calculateCRC16(data: Buffer): number {
+  let crc = 0xFFFF;
+  
+  for (let i = 0; i < data.length; i++) {
+    crc ^= data[i] << 8;
+    for (let j = 0; j < 8; j++) {
+      if (crc & 0x8000) {
+        crc = (crc << 1) ^ 0x1021;
+      } else {
+        crc = crc << 1;
+      }
+    }
+  }
+  
+  return crc & 0xFFFF;
+}
+
+/**
+ * Generate ACK response for the protocol
+ * Format: [10]<CRC><SEQ><DATA>[][13]
+ */
+function generateAckResponse(receivedData: Buffer): Buffer {
+  // Extract sequence and other parts from received message
+  // Find the start after LF (0x0A) and extract up to CR (0x0D)
+  const lfIndex = receivedData.indexOf(LF);
+  const crIndex = receivedData.indexOf(CR);
+  
+  if (lfIndex === -1 || crIndex === -1) {
+    console.warn("Invalid frame format, sending simple ACK");
+    return Buffer.from([0x06]);
+  }
+  
+  // Extract the content between LF and CR
+  const content = receivedData.slice(lfIndex + 1, crIndex);
+  const contentStr = content.toString('ascii');
+  
+  // Extract sequence portion (everything before the SIA message or data)
+  // Pattern: CRC(4 hex chars) + SEQ + DATA
+  // We need to preserve the sequence part
+  const match = contentStr.match(/^([0-9A-F]{4})([0-9A-F]{2}a?\d+)/i);
+  
+  if (!match) {
+    console.warn("Cannot parse sequence, sending simple ACK");
+    return Buffer.from([0x06]);
+  }
+  
+  const sequencePart = match[2]; // e.g., "0Ba02710100"
+  
+  // Build ACK payload: sequence + empty brackets
+  const ackPayload = sequencePart + "[]";
+  const ackPayloadBuffer = Buffer.from(ackPayload, 'ascii');
+  
+  // Calculate CRC for the ACK payload
+  const crc = calculateCRC16(ackPayloadBuffer);
+  const crcHex = crc.toString(16).toUpperCase().padStart(4, '0');
+  
+  // Build complete ACK: [10] + CRC + payload + [13]
+  const ackMessage = Buffer.concat([
+    Buffer.from([LF]),
+    Buffer.from(crcHex, 'ascii'),
+    ackPayloadBuffer,
+    Buffer.from([CR])
+  ]);
+  
+  return ackMessage;
+}
+
+/**
+ * Extract SIA message from protocol frame
+ * Format: [10]<CRC><SEQ><DATA>[#2000|...][13]
+ */
+function extractSiaMessage(data: Buffer): string | null {
+  const dataStr = data.toString('ascii');
+  
+  // Look for SIA message pattern [#...] or [...|...]
+  const siaMatch = dataStr.match(/(\[#?\d+[^\]]*\])/);
+  
+  if (siaMatch) {
+    return siaMatch[1];
+  }
+  
+  return null;
+}
+
+/**
  * Handle incoming SIA DC-09 data from a socket connection
  */
 async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
@@ -79,18 +167,35 @@ async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
     console.log(`📥 Raw data (hex): ${hexData}`);
 
     // Try to decode as ASCII
-    const message = data.toString("ascii").trim();
-    console.log(`📥 Decoded message: ${message}`);
+    const rawMessage = data.toString("ascii");
+    console.log(`📥 Decoded frame: ${rawMessage}`);
+
+    // Extract SIA message from protocol frame
+    const siaMessage = extractSiaMessage(data);
+    
+    if (!siaMessage) {
+      console.warn("⚠️  No SIA message found in frame");
+      const ack = generateAckResponse(data);
+      socket.write(ack);
+      console.log(`✅ Sent ACK: ${ack.toString('hex')}\n`);
+      console.log("─".repeat(80));
+      return;
+    }
+    
+    console.log(`📥 Extracted SIA: ${siaMessage}`);
 
     // Validate SIA DC-09 format
-    if (!isValidSiaDC09(message)) {
-      console.warn("⚠️  Invalid SIA DC-09 format, ignoring...");
-      socket.write(ACK_BYTE); // Still acknowledge to keep connection
+    if (!isValidSiaDC09(siaMessage)) {
+      console.warn("⚠️  Invalid SIA DC-09 format");
+      const ack = generateAckResponse(data);
+      socket.write(ack);
+      console.log(`✅ Sent ACK: ${ack.toString('hex')}\n`);
+      console.log("─".repeat(80));
       return;
     }
 
     // Parse the message
-    const parsed = parseSiaDC09(message);
+    const parsed = parseSiaDC09(siaMessage);
     if (parsed) {
       console.log(`\n✅ Parsed SIA DC-09 Message:`);
       console.log(`   Account: ${parsed.accountNumber}`);
@@ -112,13 +217,21 @@ async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
       console.error("❌ Failed to parse message");
     }
 
-    // Send ACK (0x06 byte)
-    socket.write(ACK_BYTE);
-    console.log("✅ Sent ACK (0x06)\n");
+    // Generate and send ACK response
+    const ack = generateAckResponse(data);
+    socket.write(ack);
+    console.log(`✅ Sent ACK: ${ack.toString('hex')}`);
+    console.log(`   ASCII: ${ack.toString('ascii').replace(/\n/g, '[LF]').replace(/\r/g, '[CR]')}\n`);
     console.log("─".repeat(80));
   } catch (error) {
     console.error("❌ Error processing message:", error);
-    socket.write(ACK_BYTE); // Still acknowledge to prevent retransmission
+    // Try to send ACK anyway
+    try {
+      const ack = generateAckResponse(data);
+      socket.write(ack);
+    } catch (ackError) {
+      socket.write(Buffer.from([0x06])); // Fallback to simple ACK
+    }
   }
 }
 
