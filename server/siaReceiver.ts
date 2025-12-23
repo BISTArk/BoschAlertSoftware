@@ -96,33 +96,57 @@ function calculateCRC16(data: Buffer): number {
 /**
  * Generate ACK response for the protocol
  * Format: [10]<CRC><SEQ><DATA>[][13]
+ * Always returns proper framed ACK, never simple 0x06
  */
 function generateAckResponse(receivedData: Buffer): Buffer {
   // Extract sequence and other parts from received message
-  // Find the start after LF (0x0A) and extract up to CR (0x0D)
   const lfIndex = receivedData.indexOf(LF);
   const crIndex = receivedData.indexOf(CR);
   
   if (lfIndex === -1 || crIndex === -1) {
-    console.warn("Invalid frame format, sending simple ACK");
-    return Buffer.from([0x06]);
+    console.error("⚠️  Invalid frame format - missing LF or CR");
+    // Still try to build a minimal ACK
+    return Buffer.concat([
+      Buffer.from([LF]),
+      Buffer.from("0000"),
+      Buffer.from("[]"),
+      Buffer.from([CR])
+    ]);
   }
   
   // Extract the content between LF and CR
   const content = receivedData.slice(lfIndex + 1, crIndex);
   const contentStr = content.toString('ascii');
   
-  // Extract sequence portion (everything before the SIA message or data)
-  // Pattern: CRC(4 hex chars) + SEQ + DATA
-  // We need to preserve the sequence part
-  const match = contentStr.match(/^([0-9A-F]{4})([0-9A-F]{2}a?\d+)/i);
+  // Pattern: Skip first 4 hex chars (CRC), then extract sequence until we hit [ or end
+  // Examples:
+  // "CDC40B[09]02690100[]" -> sequence: "0B[09]02690100"
+  // "E0E50E[09]02700100[NYC]" -> sequence: "0E[09]02700100"
+  // "EBCE1Ca02710100[#2000|...]" -> sequence: "1Ca02710100"
   
-  if (!match) {
-    console.warn("Cannot parse sequence, sending simple ACK");
-    return Buffer.from([0x06]);
+  if (contentStr.length < 4) {
+    console.error("⚠️  Content too short");
+    return Buffer.concat([
+      Buffer.from([LF]),
+      Buffer.from("0000[]"),
+      Buffer.from([CR])
+    ]);
   }
   
-  const sequencePart = match[2]; // e.g., "0Ba02710100"
+  // Skip CRC (first 4 chars) and extract until we hit the data portion
+  const afterCrc = contentStr.substring(4);
+  
+  // Find where the data starts (marked by '[')
+  const dataStartIndex = afterCrc.indexOf('[');
+  
+  let sequencePart: string;
+  if (dataStartIndex !== -1) {
+    // Extract everything before the '['
+    sequencePart = afterCrc.substring(0, dataStartIndex);
+  } else {
+    // No '[' found, the whole thing is sequence (shouldn't happen)
+    sequencePart = afterCrc;
+  }
   
   // Build ACK payload: sequence + empty brackets
   const ackPayload = sequencePart + "[]";
@@ -209,7 +233,7 @@ async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
     // Format received data like the dump
     const receivedFormatted = formatBufferAsHex(data);
     
-    // Generate ACK response
+    // Generate ACK response (always proper framed ACK)
     const ack = generateAckResponse(data);
     const ackFormatted = formatBufferAsHex(ack);
     
@@ -250,13 +274,13 @@ async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
       console.log("         ❌ Failed to parse message\n");
     }
   } catch (error) {
-    console.error("❌ Error processing message:", error);
-    // Try to send ACK anyway
+    console.error("         ❌ Error processing message:", error);
+    // Always try to send proper framed ACK
     try {
       const ack = generateAckResponse(data);
       socket.write(ack);
     } catch (ackError) {
-      socket.write(Buffer.from([0x06])); // Fallback to simple ACK
+      console.error("         ❌ Critical: Cannot generate ACK");
     }
   }
 }
