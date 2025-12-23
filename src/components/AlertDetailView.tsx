@@ -142,7 +142,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 Incident #{alert._id.slice(-6)}: {alert.eventDescription || "Security Alert"}
               </h1>
               <p className="text-sm text-muted-foreground">
-                {alert.customerAccount || alert.accountNumber}, Zone {alert.zoneId || alert.zone}
+                Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}
               </p>
             </div>
           </div>
@@ -357,7 +357,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
               </div>
               <div className="mt-3 space-y-1">
                 <p className="text-sm font-medium">
-                  {alert.customerAccount || alert.accountNumber}, Zone {alert.zoneId || alert.zone}
+                  Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}
                 </p>
                 <p className="text-xs text-muted-foreground">
                   Camera 1 - Main Entrance
@@ -377,9 +377,9 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
             </CardHeader>
             <CardContent className="space-y-3">
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Severity</p>
-                <Badge className={getSeverityColor(alert.severity)}>
-                  {(alert.severity || "low").toUpperCase()}
+                <p className="text-xs text-muted-foreground mb-1">Priority</p>
+                <Badge className={getSeverityColor(alert.priority || alert.severity)}>
+                  {(alert.priority || alert.severity || "low").toUpperCase()}
                 </Badge>
               </div>
               <div>
@@ -390,7 +390,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Event Code</p>
-                <p className="text-sm font-mono">{alert.contactIdEventCode || alert.eventCode || "-"}</p>
+                <p className="text-sm font-mono">{alert.eventCode || "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Event Qualifier</p>
@@ -403,8 +403,8 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 <p className="text-sm">{alert.eventCategory || "-"}</p>
               </div>
               <div>
-                <p className="text-xs text-muted-foreground mb-1">Partition</p>
-                <p className="text-sm font-mono">{alert.partitionNumber || alert.partition || "-"}</p>
+                <p className="text-xs text-muted-foreground mb-1">Receiver ID</p>
+                <p className="text-sm font-mono">{alert.receiverId || "-"}</p>
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Received At</p>
@@ -428,7 +428,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
           <DialogHeader>
             <DialogTitle>Confirm Lockdown</DialogTitle>
             <DialogDescription>
-              This will initiate a security lockdown at {alert.customerAccount || alert.accountNumber}, Zone {alert.zoneId || alert.zone}.
+              This will initiate a security lockdown at Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}.
               All access points will be secured.
             </DialogDescription>
           </DialogHeader>
@@ -449,7 +449,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
           <DialogHeader>
             <DialogTitle>Confirm Dispatch</DialogTitle>
             <DialogDescription>
-              This will dispatch security personnel to {alert.customerAccount || alert.accountNumber}, Zone {alert.zoneId || alert.zone}.
+              This will dispatch security personnel to Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}.
               Expected response time: 5-10 minutes.
             </DialogDescription>
           </DialogHeader>

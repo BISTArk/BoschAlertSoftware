@@ -61,75 +61,83 @@ export default defineSchema({
     .index("by_floor_and_account", ["floorId", "accountNumber"]),
 
   alerts: defineTable({
-    // Raw SIA message (for backwards compatibility and debugging)
+    // ========== SIA DC-09 Protocol Fields ==========
+    // Raw message from security panel for debugging
     rawMessage: v.string(),
     
-    // NEW: Contact ID Format - Message Format: [Customer Account] [Event Qualifier] [Event Code] [Partition] [Zone ID]
-    // Example: "1234 E 123 01 123"
-    customerAccount: v.optional(v.string()), // Customer (Subscriber Account Number) - identifies which customer
-    eventQualifier: v.optional(v.string()), // E = New Event, R = Restore
-    contactIdEventCode: v.optional(v.string()), // Event Code (300-789) - refer to Contact ID mapping
-    partitionNumber: v.optional(v.string()), // Group or Partition Number, 00 to FF (hex), 00 for non-partitioned
-    zoneId: v.optional(v.string()), // Zone ID number (001-999) or user number, 000 for system status messages
+    // Core SIA DC-09 fields from format: [#AccountNumber|ReceiverId/EventCode/AreaInfo]
+    accountNumber: v.optional(v.string()), // Customer account number (e.g., "3333") - TEMPORARY: optional for migration
+    receiverId: v.optional(v.string()), // Receiver ID (e.g., "Nri01")
+    eventCode: v.optional(v.string()), // Two-letter event code (e.g., "BA", "BH", "BR", "BC") - TEMPORARY: optional for migration
+    zoneNumber: v.optional(v.string()), // Zone number from event (e.g., "0008")
+    userName: v.optional(v.string()), // User name for access control events
+    areaInfo: v.optional(v.string()), // Additional area information
     
-    // Mapped event information from Contact ID code
-    eventCategory: v.optional(v.string()), // e.g., "System Troubles", "Sensor", "Open/Close"
-    eventType: v.optional(v.string()), // e.g., "Alarm", "Trouble", "Status"
-    eventDescription: v.optional(v.string()), // Human-readable description
-    priority: v.optional(v.string()), // "critical", "high", "medium", "low"
+    // Mapped event information
+    eventDescription: v.optional(v.string()), // Human-readable description - TEMPORARY: optional for migration
+    eventCategory: v.optional(v.string()), // e.g., "Burglary", "Fire", "Access Control", "System" - TEMPORARY: optional for migration
+    priority: v.optional(v.union(
+      v.literal("critical"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    )), // Alert priority based on event type - TEMPORARY: optional for migration
+    
+    // ========== Legacy Contact ID Fields (for backwards compatibility) ==========
+    customerAccount: v.optional(v.string()), // DEPRECATED: Use accountNumber
+    contactIdEventCode: v.optional(v.string()), // DEPRECATED: Use eventCode
+    zoneId: v.optional(v.string()), // DEPRECATED: Use zoneNumber
+    partitionNumber: v.optional(v.string()), // DEPRECATED: Not used in SIA DC-09
     severity: v.optional(v.union(
       v.literal("critical"),
       v.literal("high"),
       v.literal("medium"),
       v.literal("low")
-    )), // Alert severity classification
+    )), // DEPRECATED: Use priority
+    eventType: v.optional(v.string()), // DEPRECATED
     
-    // Legacy/backwards compatibility fields
-    protocol: v.optional(v.string()), // e.g., "SIA-DCS"
-    messageLength: v.optional(v.string()),
-    receiver: v.optional(v.string()),
-    accountNumber: v.optional(v.string()), // DEPRECATED: Use customerAccount instead
-    eventCode: v.optional(v.string()), // DEPRECATED: Use contactIdEventCode instead
-    zone: v.optional(v.string()), // DEPRECATED: Use zoneId instead
-    partition: v.optional(v.string()), // DEPRECATED: Use partitionNumber instead
-    messageTimestamp: v.optional(v.string()),
-    checksum: v.optional(v.string()),
+    // Legacy field for UI compatibility (E = Event/Alert, R = Restore)
+    eventQualifier: v.optional(v.string()),
     
-    // Sensor linkage - links zoneId to actual sensor in the system
-    sensorId: v.optional(v.id("sensors")), // Linked sensor based on zoneId
-    floorId: v.optional(v.id("floors")), // Floor where the alert originated
+    // ========== System Management Fields ==========
+    // Sensor linkage
+    sensorId: v.optional(v.id("sensors")), // Linked sensor based on zone
+    floorId: v.optional(v.id("floors")), // Floor where alert originated
     
-    // Additional metadata
+    // Timestamps
     receivedAt: v.number(), // Server timestamp when received
+    eventTimestamp: v.optional(v.number()), // Original event timestamp from panel
     
-    // Acknowledgment status
+    // Acknowledgment
     acknowledged: v.boolean(),
+    acknowledgedAt: v.optional(v.number()),
+    acknowledgedBy: v.optional(v.id("users")),
     
-    // Assignment and status
+    // Assignment and workflow
     assignedTo: v.optional(v.id("users")), // Guard assigned to this alert
-    status: v.optional(
-      v.union(
-        v.literal("unassigned"),
-        v.literal("assigned"),
-        v.literal("in-progress"),
-        v.literal("resolved")
-      )
+    status: v.union(
+      v.literal("unassigned"),
+      v.literal("assigned"),
+      v.literal("in-progress"),
+      v.literal("resolved")
     ),
     assignedBy: v.optional(v.id("users")), // Head/Admin who assigned it
     assignedAt: v.optional(v.number()),
     resolvedAt: v.optional(v.number()),
     resolvedBy: v.optional(v.id("users")),
+    responseType: v.optional(v.string()), // "lockdown", "dispatch", "investigate", etc.
     notes: v.optional(v.string()),
-  }).index("by_customer_account", ["customerAccount"])
+  })
+    .index("by_account", ["accountNumber"])
     .index("by_received_at", ["receivedAt"])
-    .index("by_contact_id_event_code", ["contactIdEventCode"])
-    .index("by_zone_id", ["zoneId"])
+    .index("by_event_code", ["eventCode"])
+    .index("by_zone", ["zoneNumber"])
     .index("by_assigned_to", ["assignedTo"])
     .index("by_status", ["status"])
     .index("by_status_and_assigned", ["status", "assignedTo"])
     .index("by_priority", ["priority"])
     .index("by_event_qualifier", ["eventQualifier"])
     .index("by_sensor", ["sensorId"])
-    .index("by_severity", ["severity"])
-    .index("by_severity_and_time", ["severity", "receivedAt"]),
+    .index("by_category", ["eventCategory"])
+    .index("by_priority_and_time", ["priority", "receivedAt"]),
 });

@@ -134,14 +134,14 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
 
     const rows = dataToExport.map((alert) => [
       new Date(alert.receivedAt).toLocaleString(),
-      alert.customerAccount || alert.accountNumber || "",
+      alert.accountNumber || alert.customerAccount || "",
       alert.eventQualifier || "",
-      alert.contactIdEventCode || alert.eventCode || "",
+      alert.eventCode || alert.contactIdEventCode || "",
       alert.eventDescription || "",
       alert.eventCategory || "",
-      alert.priority || "",
-      alert.zoneId || alert.zone || "",
-      alert.partitionNumber || alert.partition || "",
+      alert.priority || alert.severity || "",
+      alert.zoneNumber || "",
+      alert.receiverId || "",
       alert.rawMessage,
     ])
 
@@ -381,16 +381,16 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
                     </TableCell>
                     <TableCell>{getStatusBadge(alert.status)}</TableCell>
                     <TableCell>{getPriorityBadge(alert.priority)}</TableCell>
-                    <TableCell>{alert.customerAccount || alert.accountNumber || "-"}</TableCell>
+                    <TableCell>{alert.accountNumber || alert.customerAccount || "-"}</TableCell>
                     <TableCell>
                       <span className="font-mono text-xs bg-muted px-2 py-1 rounded">
-                        {alert.contactIdEventCode || alert.eventCode || "-"}
+                        {alert.eventCode || alert.contactIdEventCode || "-"}
                       </span>
                     </TableCell>
                     <TableCell className="max-w-xs truncate">{alert.eventDescription || "-"}</TableCell>
                     <TableCell>
                       <span className="font-mono text-xs">
-                        {alert.zoneId || alert.zone || "-"}
+                        {alert.zoneNumber || "-"}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm">{alert.eventCategory || "-"}</TableCell>

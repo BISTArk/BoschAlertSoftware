@@ -1,19 +1,87 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
 
-// Helper function to assign random severity (TODO: Replace with sophisticated logic)
-function getRandomSeverity(): "critical" | "high" | "medium" | "low" {
-  const severities: ("critical" | "high" | "medium" | "low")[] = ["critical", "high", "medium", "low"];
-  return severities[Math.floor(Math.random() * severities.length)];
-}
+// Create alert from SIA DC-09 parsed message
+export const createSiaDC09Alert = mutation({
+  args: {
+    rawMessage: v.string(),
+    accountNumber: v.string(),
+    receiverId: v.optional(v.string()),
+    eventCode: v.string(),
+    zoneNumber: v.optional(v.string()),
+    userName: v.optional(v.string()),
+    areaInfo: v.optional(v.string()),
+    eventDescription: v.string(),
+    eventCategory: v.string(),
+    priority: v.union(
+      v.literal("critical"),
+      v.literal("high"),
+      v.literal("medium"),
+      v.literal("low")
+    ),
+    eventQualifier: v.optional(v.string()),
+    eventTimestamp: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    // Try to find matching sensor by account number and zone
+    let sensorId = undefined;
+    let floorId = undefined;
 
-// Create a new alert from Contact ID format message
-// Format: "1234 E 123 01 123" (Customer Account, Event Qualifier, Event Code, Partition, Zone ID)
+    if (args.zoneNumber) {
+      const sensors = await ctx.db
+        .query("sensors")
+        .withIndex("by_account", (q) => q.eq("accountNumber", args.accountNumber))
+        .collect();
+
+      // Match zone (removing leading zeros)
+      const zoneNum = parseInt(args.zoneNumber, 10).toString();
+      const matchingSensor = sensors.find((s) => {
+        const sensorZone = s.zone ? parseInt(s.zone, 10).toString() : null;
+        return sensorZone === zoneNum;
+      });
+
+      if (matchingSensor) {
+        sensorId = matchingSensor._id;
+        floorId = matchingSensor.floorId;
+      }
+    }
+
+    // Determine initial status
+    const initialStatus = args.priority === "critical" || args.priority === "high" 
+      ? "unassigned" as const 
+      : "unassigned" as const;
+
+    const alertId = await ctx.db.insert("alerts", {
+      rawMessage: args.rawMessage,
+      accountNumber: args.accountNumber,
+      receiverId: args.receiverId,
+      eventCode: args.eventCode,
+      zoneNumber: args.zoneNumber,
+      userName: args.userName,
+      areaInfo: args.areaInfo,
+      eventDescription: args.eventDescription,
+      eventCategory: args.eventCategory,
+      priority: args.priority,
+      eventQualifier: args.eventQualifier,
+      sensorId,
+      floorId,
+      receivedAt: Date.now(),
+      eventTimestamp: args.eventTimestamp,
+      acknowledged: false,
+      status: initialStatus,
+    });
+
+    console.log(`Created SIA DC-09 alert: ${alertId} - ${args.eventDescription}`);
+    return alertId;
+  },
+});
+
+// LEGACY: Old mutation kept for backwards compatibility with test generator
 export const createContactIdAlert = mutation({
   args: {
     rawMessage: v.string(),
     customerAccount: v.string(),
-    eventQualifier: v.string(), // "E" or "R"
+    eventQualifier: v.string(),
     contactIdEventCode: v.string(),
     partitionNumber: v.string(),
     zoneId: v.string(),
@@ -24,88 +92,20 @@ export const createContactIdAlert = mutation({
     assignedTo: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
-    // Try to find matching sensor by zone ID
-    let sensorId = undefined;
-    let floorId = undefined;
-
-    // Query sensors by account number matching customer account
-    const sensors = await ctx.db
-      .query("sensors")
-      .withIndex("by_account", (q) => q.eq("accountNumber", args.customerAccount))
-      .collect();
-
-    // Find sensor matching zone ID (remove leading zeros for comparison)
-    const zoneIdNumber = parseInt(args.zoneId, 10).toString();
-    const matchingSensor = sensors.find((s) => {
-      const sensorZone = s.zone ? parseInt(s.zone, 10).toString() : null;
-      return sensorZone === zoneIdNumber;
-    });
-
-    if (matchingSensor) {
-      sensorId = matchingSensor._id;
-      floorId = matchingSensor.floorId;
-    }
-
+    // Map old format to new SIA DC-09 format
     const alertId = await ctx.db.insert("alerts", {
       rawMessage: args.rawMessage,
-      customerAccount: args.customerAccount,
+      accountNumber: args.customerAccount,
+      eventCode: args.contactIdEventCode,
+      zoneNumber: args.zoneId,
+      eventDescription: args.eventDescription || "Test Alert",
+      eventCategory: args.eventCategory || "Test",
+      priority: (args.priority as "critical" | "high" | "medium" | "low") || "medium",
       eventQualifier: args.eventQualifier,
-      contactIdEventCode: args.contactIdEventCode,
-      partitionNumber: args.partitionNumber,
-      zoneId: args.zoneId,
-      eventCategory: args.eventCategory,
-      eventType: args.eventType,
-      eventDescription: args.eventDescription,
-      priority: args.priority,
-      severity: getRandomSeverity(), // Assign random severity
-      sensorId,
-      floorId,
       receivedAt: Date.now(),
       acknowledged: false,
       status: args.assignedTo ? "assigned" as const : "unassigned" as const,
       assignedTo: args.assignedTo,
-    });
-    return alertId;
-  },
-});
-
-// LEGACY: Create a new alert from old SIA message format (for backwards compatibility)
-export const createAlert = mutation({
-  args: {
-    rawMessage: v.string(),
-    protocol: v.string(),
-    messageLength: v.optional(v.string()),
-    receiver: v.optional(v.string()),
-    accountNumber: v.string(),
-    eventCode: v.string(),
-    eventDescription: v.optional(v.string()),
-    zone: v.optional(v.string()),
-    partition: v.optional(v.string()),
-    messageTimestamp: v.string(),
-    checksum: v.optional(v.string()),
-  },
-  handler: async (ctx, args) => {
-    const alertId = await ctx.db.insert("alerts", {
-      rawMessage: args.rawMessage,
-      customerAccount: args.accountNumber, // Map to new field
-      eventQualifier: "E", // Default to new event
-      contactIdEventCode: args.eventCode,
-      partitionNumber: args.partition || "00",
-      zoneId: args.zone || "000",
-      severity: getRandomSeverity(), // Assign random severity
-      protocol: args.protocol,
-      messageLength: args.messageLength,
-      receiver: args.receiver,
-      accountNumber: args.accountNumber, // Keep for backwards compatibility
-      eventCode: args.eventCode, // Keep for backwards compatibility
-      eventDescription: args.eventDescription,
-      zone: args.zone,
-      partition: args.partition,
-      messageTimestamp: args.messageTimestamp,
-      checksum: args.checksum,
-      receivedAt: Date.now(),
-      acknowledged: false,
-      status: "unassigned" as const,
     });
     return alertId;
   },
@@ -156,13 +156,13 @@ export const getAlerts = query({
     } else if (args.filters?.priority) {
       alerts = await ctx.db
         .query("alerts")
-        .withIndex("by_priority", (q) => q.eq("priority", args.filters!.priority))
+        .withIndex("by_priority", (q) => q.eq("priority", args.filters!.priority as "critical" | "high" | "medium" | "low"))
         .order("desc")
         .collect();
     } else if (args.filters?.customerAccount) {
       alerts = await ctx.db
         .query("alerts")
-        .withIndex("by_customer_account", (q) => q.eq("customerAccount", args.filters!.customerAccount!))
+        .withIndex("by_account", (q) => q.eq("accountNumber", args.filters!.customerAccount!))
         .order("desc")
         .collect();
     } else {
@@ -170,13 +170,13 @@ export const getAlerts = query({
       alerts = await ctx.db.query("alerts").collect();
     }
 
-    // Sort by severity first (critical > high > medium > low), then by receivedAt (newest first)
-    const severityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
+    // Sort by priority first (critical > high > medium > low), then by receivedAt (newest first)
+    const priorityOrder: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3 };
     alerts.sort((a, b) => {
-      const aSeverity = severityOrder[a.severity || "low"];
-      const bSeverity = severityOrder[b.severity || "low"];
-      if (aSeverity !== bSeverity) {
-        return aSeverity - bSeverity; // Lower number = higher severity = higher priority
+      const aPriority = priorityOrder[a.priority || a.severity || "low"];
+      const bPriority = priorityOrder[b.priority || b.severity || "low"];
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority; // Lower number = higher priority
       }
       return b.receivedAt - a.receivedAt; // Newer first
     });
@@ -184,8 +184,8 @@ export const getAlerts = query({
     // Apply client-side filters for fields without indexes or legacy fields
     if (args.filters?.eventCode) {
       alerts = alerts.filter((alert) => 
-        alert.contactIdEventCode === args.filters!.eventCode ||
-        alert.eventCode === args.filters!.eventCode
+        alert.eventCode === args.filters!.eventCode ||
+        alert.contactIdEventCode === args.filters!.eventCode
       );
     }
 
@@ -267,12 +267,12 @@ export const getFilteredAlertsCount = query({
     } else if (args.filters?.priority) {
       alerts = await ctx.db
         .query("alerts")
-        .withIndex("by_priority", (q) => q.eq("priority", args.filters!.priority))
+        .withIndex("by_priority", (q) => q.eq("priority", args.filters!.priority as "critical" | "high" | "medium" | "low"))
         .collect();
     } else if (args.filters?.customerAccount) {
       alerts = await ctx.db
         .query("alerts")
-        .withIndex("by_customer_account", (q) => q.eq("customerAccount", args.filters!.customerAccount!))
+        .withIndex("by_account", (q) => q.eq("accountNumber", args.filters!.customerAccount!))
         .collect();
     } else {
       alerts = await ctx.db.query("alerts").collect();
@@ -281,15 +281,15 @@ export const getFilteredAlertsCount = query({
     // Apply client-side filters
     if (args.filters?.eventCode) {
       alerts = alerts.filter((alert) => 
-        alert.contactIdEventCode === args.filters!.eventCode ||
-        alert.eventCode === args.filters!.eventCode
+        alert.eventCode === args.filters!.eventCode ||
+        alert.contactIdEventCode === args.filters!.eventCode
       );
     }
 
     if (args.filters?.accountNumber) {
       alerts = alerts.filter((alert) => 
-        alert.customerAccount?.includes(args.filters!.accountNumber!) ||
-        alert.accountNumber?.includes(args.filters!.accountNumber!)
+        alert.accountNumber?.includes(args.filters!.accountNumber!) ||
+        alert.customerAccount?.includes(args.filters!.accountNumber!)
       );
     }
 
@@ -301,9 +301,9 @@ export const getFilteredAlertsCount = query({
       const searchLower = args.filters.searchQuery.toLowerCase();
       alerts = alerts.filter((alert) =>
         alert.rawMessage.toLowerCase().includes(searchLower) ||
-        alert.customerAccount?.toLowerCase().includes(searchLower) ||
         alert.accountNumber?.toLowerCase().includes(searchLower) ||
-        alert.zoneId?.toLowerCase().includes(searchLower) ||
+        alert.customerAccount?.toLowerCase().includes(searchLower) ||
+        alert.zoneNumber?.toLowerCase().includes(searchLower) ||
         (alert.eventDescription?.toLowerCase().includes(searchLower) ?? false)
       );
     }

@@ -1,241 +1,196 @@
 import { useEffect, useRef } from "react";
+import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 
+// Import location mapping
+import locationMapping from "../../location-mapping.json";
 
-// Map customer account codes to geographic coordinates (latitude, longitude)
-// These can be configured based on your actual customer locations
-const CUSTOMER_LOCATIONS: Record<string, { lat: number; lng: number; name: string }> = {
-  "1234": { lat: 13.0827, lng: 80.2707, name: "ATM-034, King Fahd Road" },
-  "5678": { lat: 13.0897, lng: 80.2750, name: "Branch-102, Anna Salai" },
-  "223010": { lat: 13.0757, lng: 80.2680, name: "Office Complex, T Nagar" },
-  // Add more customer locations as needed
-};
+// Fix Leaflet's default icon issue with Vite
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png",
+  iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png",
+  shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
+});
 
 interface AreaMapViewProps {
   alerts: Array<{
     _id: string;
-    customerAccount?: string;
     accountNumber?: string;
-    severity?: string;
+    priority?: "critical" | "high" | "medium" | "low";
     eventDescription?: string;
     status?: string;
+    eventCode?: string;
+    zoneNumber?: string;
   }>;
 }
 
+// Helper to get zone coordinates from location mapping
+const getZoneCoordinates = (accountNumber?: string, eventCode?: string, zoneNumber?: string) => {
+  if (!accountNumber || !zoneNumber) return null;
+  
+  const account = locationMapping.accounts[accountNumber as keyof typeof locationMapping.accounts];
+  if (!account) return null;
+  
+  // Look up zone by zone number only (e.g., "0008", "0005", "0001")
+  const zones = account.zones as Record<string, { coordinates: { lat: number; lng: number } }>;
+  const zone = zones[zoneNumber];
+  if (!zone) return null;
+  
+  return zone.coordinates;
+};
+
+// Get priority color
+const getPriorityColor = (priority?: "critical" | "high" | "medium" | "low"): string => {
+  switch (priority) {
+    case "critical": return "#dc2626"; // red
+    case "high": return "#f97316"; // orange
+    case "medium": return "#eab308"; // yellow
+    case "low": return "#3b82f6"; // blue
+    default: return "#6b7280"; // gray
+  }
+};
+
 export function AreaMapView({ alerts }: AreaMapViewProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  
+  // Get center from location mapping
+  const defaultCenter: [number, number] = [
+    locationMapping.mapSettings.defaultCenter.lat,
+    locationMapping.mapSettings.defaultCenter.lng
+  ];
 
-  // Get severity color
-  const getSeverityColor = (severity?: string): string => {
-    switch (severity) {
-      case "critical": return "#ef4444"; // red
-      case "high": return "#f97316"; // orange
-      case "medium": return "#eab308"; // yellow
-      case "low": return "#3b82f6"; // blue
-      default: return "#6b7280"; // gray
-    }
-  };
-
+  // Debug: Log alerts received
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    const rect = canvas.getBoundingClientRect();
-    
-    canvas.width = rect.width * dpr;
-    canvas.height = rect.height * dpr;
-    ctx.scale(dpr, dpr);
-
-    // Clear canvas
-    ctx.clearRect(0, 0, rect.width, rect.height);
-
-    // Draw base map (simple grid/street layout)
-    drawBaseMap(ctx, rect.width, rect.height);
-
-    // Calculate bounds for all customer locations
-    const allLocations = Object.values(CUSTOMER_LOCATIONS);
-    const latitudes = allLocations.map(l => l.lat);
-    const longitudes = allLocations.map(l => l.lng);
-    
-    const minLat = Math.min(...latitudes);
-    const maxLat = Math.max(...latitudes);
-    const minLng = Math.min(...longitudes);
-    const maxLng = Math.max(...longitudes);
-
-    // Add padding
-    const latPadding = (maxLat - minLat) * 0.2;
-    const lngPadding = (maxLng - minLng) * 0.2;
-
-    // Convert lat/lng to canvas coordinates
-    const latLngToCanvas = (lat: number, lng: number): { x: number; y: number } => {
-      const x = ((lng - minLng + lngPadding) / (maxLng - minLng + 2 * lngPadding)) * rect.width;
-      const y = ((maxLat - lat + latPadding) / (maxLat - minLat + 2 * latPadding)) * rect.height;
-      return { x, y };
-    };
-
-    // Draw customer location markers
-    Object.entries(CUSTOMER_LOCATIONS).forEach(([code, location]) => {
-      const pos = latLngToCanvas(location.lat, location.lng);
-      
-      // Check if there are alerts for this location
-      const locationAlerts = alerts.filter(
-        a => (a.customerAccount || a.accountNumber) === code
-      );
-
-      if (locationAlerts.length > 0) {
-        // Draw alert markers
-        locationAlerts.forEach((alert, index) => {
-          const offset = index * 5; // Offset multiple alerts at same location
-          const color = getSeverityColor(alert.severity);
-          
-          // Draw pulsing circle for active alerts
-          if (alert.status !== "resolved") {
-            ctx.beginPath();
-            ctx.arc(pos.x + offset, pos.y + offset, 20, 0, 2 * Math.PI);
-            ctx.fillStyle = color + "40"; // Semi-transparent
-            ctx.fill();
-          }
-
-          // Draw marker
-          ctx.beginPath();
-          ctx.arc(pos.x + offset, pos.y + offset, 8, 0, 2 * Math.PI);
-          ctx.fillStyle = color;
-          ctx.fill();
-          ctx.strokeStyle = "#ffffff";
-          ctx.lineWidth = 2;
-          ctx.stroke();
-
-          // Draw alert count badge
-          if (index === locationAlerts.length - 1 && locationAlerts.length > 1) {
-            ctx.beginPath();
-            ctx.arc(pos.x + offset + 8, pos.y + offset - 8, 10, 0, 2 * Math.PI);
-            ctx.fillStyle = "#ef4444";
-            ctx.fill();
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 10px sans-serif";
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(locationAlerts.length.toString(), pos.x + offset + 8, pos.y + offset - 8);
-          }
-        });
-      } else {
-        // Draw normal location marker (no alerts)
-        ctx.beginPath();
-        ctx.arc(pos.x, pos.y, 6, 0, 2 * Math.PI);
-        ctx.fillStyle = "#10b981"; // green
-        ctx.fill();
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
-        ctx.stroke();
-      }
-
-      // Draw location label
-      ctx.fillStyle = "#1f2937";
-      ctx.font = "11px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(code, pos.x, pos.y + 25);
+    console.log("🗺️ AreaMapView - Received alerts:", alerts);
+    alerts.forEach(alert => {
+      console.log(`  Alert: Account ${alert.accountNumber} / Zone ${alert.zoneNumber} / Event ${alert.eventCode} (${alert.eventDescription})`);
     });
-
   }, [alerts]);
 
-  const drawBaseMap = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
-    // Draw background
-    ctx.fillStyle = "#f3f4f6";
-    ctx.fillRect(0, 0, width, height);
+  useEffect(() => {
+    // Update map when alerts change
+    if (mapRef.current) {
+      // Fit bounds to show all markers with alerts
+      const bounds: L.LatLngBoundsExpression = alerts
+        .map(alert => getZoneCoordinates(alert.accountNumber, alert.eventCode, alert.zoneNumber))
+        .filter((coords): coords is { lat: number; lng: number } => coords !== null)
+        .map(coords => [coords.lat, coords.lng] as [number, number]);
 
-    // Draw grid (street layout)
-    ctx.strokeStyle = "#d1d5db";
-    ctx.lineWidth = 1;
-
-    // Vertical lines
-    for (let x = 0; x < width; x += 60) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
+      if (bounds.length > 0) {
+        mapRef.current.fitBounds(bounds, { padding: [50, 50] });
+      }
     }
-
-    // Horizontal lines
-    for (let y = 0; y < height; y += 60) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // Draw main roads (thicker lines)
-    ctx.strokeStyle = "#9ca3af";
-    ctx.lineWidth = 2;
-    
-    ctx.beginPath();
-    ctx.moveTo(width * 0.3, 0);
-    ctx.lineTo(width * 0.3, height);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.moveTo(0, height * 0.4);
-    ctx.lineTo(width, height * 0.4);
-    ctx.stroke();
-  };
-
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    // Check if click is near any alert marker
-    // This is a simplified version - you might want to implement proper hit detection
-    console.log("Map clicked at:", x, y);
-  };
+  }, [alerts]);
 
   return (
-    <div className="relative w-full h-full bg-muted rounded-lg overflow-hidden">
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full cursor-pointer"
-        onClick={handleCanvasClick}
-        style={{ width: "100%", height: "100%" }}
-      />
-      
+    <div className="relative w-full h-full rounded-lg overflow-hidden">
+      <MapContainer
+        center={defaultCenter}
+        zoom={locationMapping.mapSettings.defaultZoom}
+        style={{ height: "100%", width: "100%" }}
+        ref={mapRef}
+      >
+        <TileLayer
+          attribution={locationMapping.mapSettings.attribution}
+          url={locationMapping.mapSettings.tileLayer}
+        />
+
+        {/* Show all zone markers from location mapping */}
+        {Object.entries(locationMapping.accounts).map(([accountNumber, account]) =>
+          Object.entries(account.zones).map(([zoneId, zone]) => {
+            // Check if there are active alerts for this zone
+            // Match by zone number only (zones are now keyed by zone number, not eventCode+zoneNumber)
+            const zoneAlerts = alerts.filter(a => {
+              if (a.accountNumber !== accountNumber) return false;
+              
+              // Match by zone number only (e.g., "0008")
+              return a.zoneNumber === zoneId;
+            });
+            
+            const hasAlert = zoneAlerts.length > 0;
+            const priority = zoneAlerts[0]?.priority || "low";
+
+            return (
+              <div key={`${accountNumber}-${zoneId}`}>
+                {/* Zone marker */}
+                <Marker position={[zone.coordinates.lat, zone.coordinates.lng]}>
+                  <Popup>
+                    <div className="text-sm">
+                      <div className="font-bold">{zone.name}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Account: {accountNumber} • Zone: {zoneId}
+                      </div>
+                      <div className="text-xs mt-1">{zone.location}</div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {zone.description}
+                      </div>
+                      {hasAlert && (
+                        <div className="mt-2 pt-2 border-t">
+                          <div className="font-semibold text-red-600">⚠️ ACTIVE ALERT</div>
+                          {zoneAlerts.map(alert => (
+                            <div key={alert._id} className="text-xs mt-1">
+                              {alert.eventDescription}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Popup>
+                </Marker>
+
+                {/* Pulsing circle for active alerts */}
+                {hasAlert && (
+                  <Circle
+                    center={[zone.coordinates.lat, zone.coordinates.lng]}
+                    radius={100}
+                    pathOptions={{
+                      color: getPriorityColor(priority),
+                      fillColor: getPriorityColor(priority),
+                      fillOpacity: 0.4,
+                      weight: 2,
+                      className: "animate-pulse"
+                    }}
+                  />
+                )}
+              </div>
+            );
+          })
+        )}
+      </MapContainer>
+
       {/* Legend */}
-      <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg text-xs">
+      <div className="absolute bottom-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg text-xs z-1000">
         <div className="font-semibold mb-2">Alert Severity</div>
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-red-500" />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#dc2626" }} />
             <span>Critical</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-orange-500" />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#f97316" }} />
             <span>High</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-yellow-500" />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#eab308" }} />
             <span>Medium</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-blue-500" />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: "#3b82f6" }} />
             <span>Low</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-green-500" />
-            <span>No Alerts</span>
           </div>
         </div>
       </div>
 
       {/* Location info */}
-      <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm rounded-lg p-3 shadow-lg">
+      <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-lg p-3 shadow-lg z-1000">
         <div className="text-xs font-semibold text-muted-foreground">MONITORED AREA</div>
-        <div className="text-sm font-bold">Chennai Metro Region</div>
+        <div className="text-sm font-bold">
+          {Object.values(locationMapping.accounts)[0]?.city || "Bangalore"} Security Network
+        </div>
         <div className="text-xs text-muted-foreground mt-1">
-          {Object.keys(CUSTOMER_LOCATIONS).length} Locations • {alerts.filter(a => a.status !== "resolved").length} Active Alerts
+          {Object.keys(locationMapping.accounts).length} Accounts • {alerts.filter(a => a.status !== "resolved").length} Active Alerts
         </div>
       </div>
     </div>

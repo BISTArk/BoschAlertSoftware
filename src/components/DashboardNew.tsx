@@ -9,6 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { AlertCircle } from "lucide-react";
 
 interface DashboardNewProps {
@@ -20,6 +22,7 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
   const [selectedFloor, setSelectedFloor] = useState<Id<"floors"> | null>(null);
   const [mapFilter, setMapFilter] = useState<"all" | "alerts">("all");
   const [activeTab, setActiveTab] = useState<"alerts" | "events">("alerts");
+  const [showOnlyActive, setShowOnlyActive] = useState(true); // Default to only active alerts
 
   // Fetch data
   const firstFloor = useQuery(api.siteMap.getFirstFloor);
@@ -47,11 +50,30 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
       filtered = filtered.filter((alert) => alert.assignedTo === user._id);
     }
 
-    // Only show unresolved alerts
-    return filtered.filter((alert) => alert.status !== "resolved");
+    // Filter by active/all toggle
+    if (showOnlyActive) {
+      // Only show unresolved alerts (not resolved)
+      filtered = filtered.filter((alert) => alert.status !== "resolved");
+    }
+    // If showOnlyActive is false, show all alerts (including resolved)
+
+    return filtered;
   };
 
   const filteredAlerts = getFilteredAlerts();
+
+  // Debug: Log alerts being passed to map
+  useEffect(() => {
+    console.log("📊 Dashboard - Filtered Alerts:", filteredAlerts.length);
+    console.log("📍 Alert Details:", filteredAlerts.map(a => ({
+      id: a._id,
+      account: a.accountNumber,
+      eventCode: a.eventCode,
+      zone: a.zoneNumber,
+      description: a.eventDescription,
+      status: a.status
+    })));
+  }, [filteredAlerts]);
 
   const handleAlertClick = (alert: any) => {
     onAlertClick?.(alert._id);
@@ -112,21 +134,36 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="text-lg font-semibold">Security Map</CardTitle>
-              <div className="flex gap-2">
-                <Button
-                  variant={mapFilter === "all" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMapFilter("all")}
-                >
-                  All Locations
-                </Button>
-                <Button
-                  variant={mapFilter === "alerts" ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setMapFilter("alerts")}
-                >
-                  Alerts Only
-                </Button>
+              <div className="flex items-center gap-4">
+                {/* Active/All Alerts Toggle */}
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="show-active"
+                    checked={showOnlyActive}
+                    onCheckedChange={setShowOnlyActive}
+                  />
+                  <Label htmlFor="show-active" className="text-sm cursor-pointer">
+                    {showOnlyActive ? "Active Only" : "Show All"}
+                  </Label>
+                </div>
+                
+                {/* Map Filter Buttons */}
+                <div className="flex gap-2">
+                  <Button
+                    variant={mapFilter === "all" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMapFilter("all")}
+                  >
+                    All Locations
+                  </Button>
+                  <Button
+                    variant={mapFilter === "alerts" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setMapFilter("alerts")}
+                  >
+                    Alerts Only
+                  </Button>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -135,9 +172,10 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
               <AreaMapView
                 alerts={filteredAlerts.map(a => ({
                   _id: a._id,
-                  customerAccount: a.customerAccount,
                   accountNumber: a.accountNumber,
-                  severity: a.severity,
+                  eventCode: a.eventCode,
+                  zoneNumber: a.zoneNumber,
+                  priority: a.priority,
                   eventDescription: a.eventDescription,
                   status: a.status
                 }))}
@@ -154,7 +192,14 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                 <AlertCircle className="h-5 w-5 text-red-500" />
                 Live Alerts Feed
               </CardTitle>
-              <Badge variant="secondary">{filteredAlerts.length}</Badge>
+              <div className="flex items-center gap-3">
+                <Badge variant="secondary">{filteredAlerts.length}</Badge>
+                {showOnlyActive && (
+                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                    Active Only
+                  </Badge>
+                )}
+              </div>
             </div>
             <p className="text-sm text-muted-foreground">Real-time security events</p>
           </CardHeader>
@@ -186,7 +231,7 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                       {filteredAlerts
                         .filter(alert => alert.eventQualifier !== "R")
                         .map((alert, index) => {
-                          const threat = getThreatLevel(alert.contactIdEventCode || alert.eventCode, alert.priority);
+                          const threat = getThreatLevel(alert.eventCode, alert.priority);
                           const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
                           
                           return (
@@ -210,7 +255,7 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-1">
-                                    📍 {alert.customerAccount || alert.accountNumber || "N/A"} {(alert.zoneId || alert.zone) && `- Zone ${alert.zoneId || alert.zone}`}
+                                    📍 {alert.accountNumber || alert.customerAccount || "N/A"} {alert.zoneNumber && `- Zone ${alert.zoneNumber}`}
                                   </p>
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
@@ -262,7 +307,7 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-1">
-                                    📍 {alert.customerAccount || alert.accountNumber || "N/A"} {(alert.zoneId || alert.zone) && `- Zone ${alert.zoneId || alert.zone}`}
+                                    📍 {alert.accountNumber || alert.customerAccount || "N/A"} {alert.zoneNumber && `- Zone ${alert.zoneNumber}`}
                                   </p>
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
