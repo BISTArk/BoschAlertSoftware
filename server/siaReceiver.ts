@@ -12,7 +12,7 @@
 import net from "net";
 import { parseSiaDC09, isValidSiaDC09, generateSummary } from "./siaDC09Parser.ts";
 
-const TCP_PORT = 4000;
+const TCP_PORT = 7800;
 const TCP_HOST = process.env.TCP_HOST || "0.0.0.0"; // Use 0.0.0.0 for all interfaces, or specify IP like "127.0.0.1" or "192.168.1.100"
 const CONVEX_SITE_URL = process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
 
