@@ -10,7 +10,7 @@
  */
 
 import net from "net";
-import { parseSiaDC09, isValidSiaDC09, generateSummary } from "./siaDC09Parser.js";
+import { parseSiaDC09, isValidSiaDC09, generateSummary } from "./siaDC09Parser.ts";
 
 const TCP_PORT = 4000;
 const TCP_HOST = process.env.TCP_HOST || "0.0.0.0"; // Use 0.0.0.0 for all interfaces, or specify IP like "127.0.0.1" or "192.168.1.100"
@@ -159,6 +159,6 @@ export function startServers(): void {
 }
 
 // Start server if this file is run directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// if (import.meta.url === `file://${process.argv[1]}`) {
   startServers();
-}
+// }
