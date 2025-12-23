@@ -9,6 +9,7 @@ import {
   FileText,
   Settings,
   Shield,
+  BarChart3,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -22,6 +23,7 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
   const navigationItems = [
     { id: "dashboard", label: "Home", icon: LayoutDashboard, roles: ["guard", "head", "admin"] },
     { id: "alerts", label: "Alerts", icon: AlertCircle, roles: ["guard", "head", "admin"] },
+    { id: "analytics", label: "Analytics", icon: BarChart3, roles: ["head", "admin"] },
     { id: "locations", label: "Locations", icon: MapPin, roles: ["head", "admin"] },
     { id: "sensors", label: "Sensors", icon: Radio, roles: ["head", "admin"] },
     { id: "escalations", label: "Escalations", icon: TrendingUp, roles: ["head", "admin"] },

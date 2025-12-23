@@ -4,6 +4,7 @@ import { AlertsTable } from "@/components/alerts-table"
 import { AlertDetailView } from "@/components/AlertDetailView"
 import { Login } from "@/components/Login"
 import { SiteMapPage } from "@/components/SiteMapPage"
+import { AnalyticsDashboard } from "@/components/AnalyticsDashboard"
 import { Sidebar } from "@/components/Sidebar"
 import { TopHeader } from "@/components/TopHeader"
 import { GuardAvailabilityToggle } from "@/components/GuardAvailabilityToggle"
@@ -81,6 +82,8 @@ function App() {
             <p className="text-muted-foreground">Generate and view security reports and analytics</p>
           </div>
         );
+      case "analytics":
+        return <AnalyticsDashboard />;
       case "admin":
         return (
           <div className="space-y-6">

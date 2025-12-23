@@ -5,6 +5,7 @@ import type { Id } from "../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AlertActions } from "@/components/AlertActions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -36,6 +37,10 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
   const alert = useQuery(api.alerts.getAlerts, {
     filters: {},
   })?.page.find((a) => a._id === alertId);
+
+  // Get all users to find assigned guard
+  const allUsers = useQuery(api.auth.getUsers);
+  const assignedUser = allUsers?.find((u) => u._id === alert?.assignedTo);
 
   const handleAction = async (action: string) => {
     if (!user) return;
@@ -146,9 +151,19 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Clock className="h-5 w-5 text-red-500" />
-            <span className="text-3xl font-mono font-bold text-red-500">{timeDisplay}</span>
+          <div className="flex items-center gap-4">
+            {/* Assign/Reassign button for heads and admins */}
+            {(user?.role === "head" || user?.role === "admin") && (
+              <AlertActions
+                alertId={alertId}
+                currentStatus={alert.status}
+                assignedTo={alert.assignedTo}
+              />
+            )}
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-red-500" />
+              <span className="text-3xl font-mono font-bold text-red-500">{timeDisplay}</span>
+            </div>
           </div>
         </div>
       </div>
@@ -251,7 +266,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                   <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                Step 2: Verification
+                Step 2: AI recommended Steps
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -265,6 +280,12 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 <Checkbox id="verify-card" />
                 <Label htmlFor="verify-card" className="text-sm font-normal">
                   Check Card Access Logs
+                </Label>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox id="call-guard" />
+                <Label htmlFor="call-guard" className="text-sm font-normal">
+                  Call the On-Site Guard
                 </Label>
               </div>
             </CardContent>
@@ -302,16 +323,6 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                   <Send className="h-5 w-5 mr-2" />
                   Dispatch
                 </Button>
-                <Button 
-                  variant="default" 
-                  size="lg" 
-                  className="flex-1"
-                  onClick={() => setShowResolveDialog(true)}
-                  disabled={alert.status === "resolved"}
-                >
-                  <CheckCircle className="h-5 w-5 mr-2" />
-                  Resolve
-                </Button>
               </div>
               <Button 
                 variant="outline" 
@@ -322,14 +333,104 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 <Clock className="h-4 w-4 mr-2" />
                 Investigate
               </Button>
-              <Button 
-                variant="default" 
-                className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
-                onClick={() => setShowCloseDialog(true)}
-                disabled={alert.status === "resolved"}
-              >
-                Close Incident
-              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Step 4: Incident Summary & Resolution */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900 flex items-center justify-center">
+                  <CheckCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                </div>
+                Step 4: Incident Summary & Resolution
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Timeline */}
+              <div>
+                <p className="text-sm font-medium mb-3">Incident Timeline</p>
+                <div className="space-y-3">
+                  <div className="flex gap-3">
+                    <div className="flex flex-col items-center">
+                      <div className="w-2 h-2 rounded-full bg-red-500" />
+                      <div className="w-0.5 h-full bg-border" />
+                    </div>
+                    <div className="flex-1 pb-3">
+                      <p className="text-sm font-medium">Alert Received</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(alert.receivedAt).toLocaleString()}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {alert.eventDescription || "Security alert detected"}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {alert.status !== "unassigned" && (
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 rounded-full bg-blue-500" />
+                        <div className="w-0.5 h-full bg-border" />
+                      </div>
+                      <div className="flex-1 pb-3">
+                        <p className="text-sm font-medium">Investigation Started</p>
+                        <p className="text-xs text-muted-foreground">
+                          Status: {alert.status}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {alert.status === "resolved" && (
+                    <div className="flex gap-3">
+                      <div className="flex flex-col items-center">
+                        <div className="w-2 h-2 rounded-full bg-green-500" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Incident Resolved</p>
+                        <p className="text-xs text-muted-foreground">
+                          Incident closed successfully
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="pt-2 border-t border-border">
+                <p className="text-sm font-medium mb-2">Summary</p>
+                <div className="space-y-1 text-sm text-muted-foreground">
+                  <p>• Location: Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}</p>
+                  <p>• Event Type: {alert.eventDescription || "Security Alert"}</p>
+                  <p>• Priority: {(alert.priority || alert.severity || "low").toUpperCase()}</p>
+                  <p>• Time Elapsed: {timeDisplay}</p>
+                </div>
+              </div>
+
+              {/* Resolution Actions */}
+              <div className="pt-2 space-y-2">
+                <Button 
+                  variant="default" 
+                  size="lg" 
+                  className="w-full"
+                  onClick={() => setShowResolveDialog(true)}
+                  disabled={alert.status === "resolved"}
+                >
+                  <CheckCircle className="h-5 w-5 mr-2" />
+                  Resolve Incident
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="lg"
+                  className="w-full"
+                  onClick={() => setShowCloseDialog(true)}
+                  disabled={alert.status === "resolved"}
+                >
+                  Close Incident
+                </Button>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -387,6 +488,24 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 <Badge variant="outline">
                   {(alert.status || "unassigned").toUpperCase()}
                 </Badge>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1">Assigned To</p>
+                {assignedUser ? (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <span className="text-xs font-medium text-primary">
+                        {assignedUser.name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{assignedUser.name}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{assignedUser.role}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">Not assigned</p>
+                )}
               </div>
               <div>
                 <p className="text-xs text-muted-foreground mb-1">Event Code</p>

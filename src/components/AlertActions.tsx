@@ -103,7 +103,7 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
   const isHeadOrAdmin = user?.role === "head" || user?.role === "admin";
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
       {/* Guards can mark as in-progress or resolved */}
       {isGuard && currentStatus !== "resolved" && (
         <>
@@ -111,7 +111,10 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
             <Button
               variant="outline"
               size="sm"
-              onClick={() => handleStatusChange("in-progress")}
+              onClick={(e) => {
+                e.stopPropagation();
+                handleStatusChange("in-progress");
+              }}
             >
               Start
             </Button>
@@ -119,7 +122,10 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
           <Button
             variant="outline"
             size="sm"
-            onClick={() => setShowResolveDialog(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowResolveDialog(true);
+            }}
           >
             <CheckCircle className="h-4 w-4 mr-1" />
             Resolve
@@ -132,7 +138,10 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
         <Button
           variant="outline"
           size="sm"
-          onClick={() => setShowAssignDialog(true)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowAssignDialog(true);
+          }}
         >
           <UserPlus className="h-4 w-4 mr-1" />
           {assignedTo ? "Reassign" : "Assign"}

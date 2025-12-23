@@ -3,6 +3,7 @@ import { api } from "../../convex/_generated/api"
 import type { Id } from "../../convex/_generated/dataModel"
 import { useAuth } from "@/contexts/AuthContext"
 import { AlertActions } from "@/components/AlertActions"
+import { AlertsTableStats } from "@/components/AlertsTableStats"
 import {
   Table,
   TableBody,
@@ -204,7 +205,10 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
   const hasActiveFilters = statusFilter || debouncedSearchQuery || debouncedEventCodeFilter || debouncedAccountFilter;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* Stats Cards */}
+      <AlertsTableStats />
+
       {/* Filter Controls */}
       {user?.role !== "guard" && (
         <div className="flex flex-wrap items-center gap-4 p-4 bg-muted/50 rounded-lg">

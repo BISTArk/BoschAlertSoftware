@@ -13,6 +13,7 @@ import net from "net";
 import { parseSiaDC09, isValidSiaDC09, generateSummary } from "./siaDC09Parser.js";
 
 const TCP_PORT = 4000;
+const TCP_HOST = process.env.TCP_HOST || "0.0.0.0"; // Use 0.0.0.0 for all interfaces, or specify IP like "127.0.0.1" or "192.168.1.100"
 const CONVEX_SITE_URL = process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
 
 // ACK response byte (standard acknowledgment)
@@ -130,8 +131,8 @@ function startTCPServer(): void {
     });
   });
 
-  server.listen(TCP_PORT, () => {
-    console.log(`✅ TCP server listening on port ${TCP_PORT}`);
+  server.listen(TCP_PORT, TCP_HOST, () => {
+    console.log(`✅ TCP server listening on ${TCP_HOST}:${TCP_PORT}`);
   });
 
   server.on("error", (error) => {
@@ -147,6 +148,7 @@ export function startServers(): void {
   console.log("🚀 SIA DC-09 Message Receiver Server");
   console.log("═".repeat(80));
   console.log(`Convex URL: ${CONVEX_SITE_URL}`);
+  console.log(`TCP Host: ${TCP_HOST}`);
   console.log(`TCP Port: ${TCP_PORT}`);
   console.log("─".repeat(80) + "\n");
 
