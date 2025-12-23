@@ -24,6 +24,9 @@ const CONVEX_SITE_URL = process.env.VITE_CONVEX_URL || "http://127.0.0.1:3210";
 const LF = 0x0A;  // Line Feed [10]
 const CR = 0x0D;  // Carriage Return [13]
 
+// Packet counter for logging
+let packetCounter = 0;
+
 /**
  * Store SIA DC-09 alert in Convex database
  */
@@ -141,6 +144,44 @@ function generateAckResponse(receivedData: Buffer): Buffer {
 }
 
 /**
+ * Format buffer as hex with [XX] notation
+ * Example: Buffer([0x0A, 0x43, 0x44]) => "[10]CD44"
+ */
+function formatBufferAsHex(buffer: Buffer): string {
+  let result = '';
+  for (let i = 0; i < buffer.length; i++) {
+    const byte = buffer[i];
+    // Show control characters in brackets, regular chars as hex
+    if (byte === 0x0A) {
+      result += '[10]';
+    } else if (byte === 0x0D) {
+      result += '[13]';
+    } else if (byte === 0x09) {
+      result += '[09]';
+    } else if (byte < 0x20 || byte > 0x7E) {
+      // Non-printable characters in hex
+      result += byte.toString(16).toUpperCase().padStart(2, '0');
+    } else {
+      // Printable ASCII
+      result += String.fromCharCode(byte);
+    }
+  }
+  return result;
+}
+
+/**
+ * Get current timestamp in HH:MM:SS.mmm format
+ */
+function getTimestamp(): string {
+  const now = new Date();
+  const hours = now.getHours().toString().padStart(2, '0');
+  const minutes = now.getMinutes().toString().padStart(2, '0');
+  const seconds = now.getSeconds().toString().padStart(2, '0');
+  const millis = now.getMilliseconds().toString().padStart(4, '0');
+  return `${hours}:${minutes}:${seconds}.${millis}`;
+}
+
+/**
  * Extract SIA message from protocol frame
  * Format: [10]<CRC><SEQ><DATA>[#2000|...][13]
  */
@@ -162,67 +203,52 @@ function extractSiaMessage(data: Buffer): string | null {
  */
 async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
   try {
-    // Convert buffer to hex for logging
-    const hexData = data.toString("hex");
-    console.log(`📥 Raw data (hex): ${hexData}`);
-
-    // Try to decode as ASCII
-    const rawMessage = data.toString("ascii");
-    console.log(`📥 Decoded frame: ${rawMessage}`);
+    packetCounter++;
+    const timestamp = getTimestamp();
+    
+    // Format received data like the dump
+    const receivedFormatted = formatBufferAsHex(data);
+    
+    // Generate ACK response
+    const ack = generateAckResponse(data);
+    const ackFormatted = formatBufferAsHex(ack);
+    
+    // Print in dump format: timestamp <counter> received => ACK ack
+    console.log(`${timestamp} <${packetCounter}> ${receivedFormatted} => ACK ${ackFormatted}`);
+    
+    // Send ACK
+    socket.write(ack);
 
     // Extract SIA message from protocol frame
     const siaMessage = extractSiaMessage(data);
     
     if (!siaMessage) {
-      console.warn("⚠️  No SIA message found in frame");
-      const ack = generateAckResponse(data);
-      socket.write(ack);
-      console.log(`✅ Sent ACK: ${ack.toString('hex')}\n`);
-      console.log("─".repeat(80));
+      console.log("         ⚠️  No SIA message found in frame\n");
       return;
     }
     
-    console.log(`📥 Extracted SIA: ${siaMessage}`);
+    console.log(`         📥 SIA: ${siaMessage}`);
 
     // Validate SIA DC-09 format
     if (!isValidSiaDC09(siaMessage)) {
-      console.warn("⚠️  Invalid SIA DC-09 format");
-      const ack = generateAckResponse(data);
-      socket.write(ack);
-      console.log(`✅ Sent ACK: ${ack.toString('hex')}\n`);
-      console.log("─".repeat(80));
+      console.log("         ⚠️  Invalid SIA DC-09 format\n");
       return;
     }
 
     // Parse the message
     const parsed = parseSiaDC09(siaMessage);
     if (parsed) {
-      console.log(`\n✅ Parsed SIA DC-09 Message:`);
-      console.log(`   Account: ${parsed.accountNumber}`);
-      console.log(`   Receiver: ${parsed.receiverId || "N/A"}`);
-      console.log(`   Event: ${parsed.eventCode} - ${parsed.eventDescription}`);
-      console.log(`   Category: ${parsed.eventCategory}`);
-      console.log(`   Priority: ${parsed.priority.toUpperCase()}`);
-      if (parsed.zoneNumber) console.log(`   Zone: ${parsed.zoneNumber}`);
-      if (parsed.userName) console.log(`   User: ${parsed.userName}`);
-      if (parsed.areaInfo) console.log(`   Area: ${parsed.areaInfo}`);
+      console.log(`         ✅ Account: ${parsed.accountNumber} | Event: ${parsed.eventCode} - ${parsed.eventDescription}`);
+      if (parsed.priority === "critical" || parsed.priority === "high") {
+        console.log(`         🚨 Priority: ${parsed.priority.toUpperCase()}`);
+      }
 
       // Store in database
       await storeSiaDC09Alert(parsed);
-
-      // Generate summary
-      const summary = generateSummary(parsed);
-      console.log(`   Summary: ${summary}\n`);
+      console.log(`         💾 Stored in database\n`);
     } else {
-      console.error("❌ Failed to parse message");
+      console.log("         ❌ Failed to parse message\n");
     }
-
-    // Generate and send ACK response
-    const ack = generateAckResponse(data);
-    socket.write(ack);
-    console.log(`✅ Sent ACK: ${ack.toString('hex')}`);
-    console.log(`   ASCII: ${ack.toString('ascii').replace(/\n/g, '[LF]').replace(/\r/g, '[CR]')}\n`);
-    console.log("─".repeat(80));
   } catch (error) {
     console.error("❌ Error processing message:", error);
     // Try to send ACK anyway
