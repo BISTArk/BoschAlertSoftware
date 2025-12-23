@@ -7,6 +7,7 @@ export const createSiaDC09Alert = mutation({
     rawMessage: v.string(),
     accountNumber: v.string(),
     receiverId: v.optional(v.string()),
+    areaNumber: v.optional(v.string()),
     eventCode: v.string(),
     zoneNumber: v.optional(v.string()),
     userName: v.optional(v.string()),
@@ -55,6 +56,7 @@ export const createSiaDC09Alert = mutation({
       rawMessage: args.rawMessage,
       accountNumber: args.accountNumber,
       receiverId: args.receiverId,
+      areaNumber: args.areaNumber,
       eventCode: args.eventCode,
       zoneNumber: args.zoneNumber,
       userName: args.userName,
@@ -474,7 +476,7 @@ export const getAlertStats = query({
     // For now, we'll consider all sensors as potentially active
     // In a real system, you'd have an "active" or "enabled" field on sensors
     const totalSensors = allSensors.length || 1;
-    const sensorsActive = allSensors.filter(s => s.isActive !== false).length;
+    const sensorsActive = allSensors.filter(s => s.active !== false).length;
     const sensorsActivePercent = Math.round((sensorsActive / totalSensors) * 100);
     
     // Calculate system health
@@ -636,7 +638,7 @@ export const getAnalytics = query({
     const panelsAlarmedPercent = Math.round((panelsAlarmed / totalPanels) * 100);
     
     const totalSensors = allSensors.length || 1;
-    const sensorsActive = allSensors.filter(s => s.isActive !== false).length;
+    const sensorsActive = allSensors.filter(s => s.active !== false).length;
     const sensorsActivePercent = Math.round((sensorsActive / totalSensors) * 100);
     
     const alarmHealthScore = Math.max(0, 100 - (panelsAlarmedPercent * 2));

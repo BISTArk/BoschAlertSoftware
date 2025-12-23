@@ -48,6 +48,7 @@ async function storeSiaDC09Alert(parsed: ReturnType<typeof parseSiaDC09>): Promi
           rawMessage: parsed.raw,
           accountNumber: parsed.accountNumber,
           receiverId: parsed.receiverId,
+          areaNumber: parsed.areaNumber,
           eventCode: parsed.eventCode,
           zoneNumber: parsed.zoneNumber,
           userName: parsed.userName,

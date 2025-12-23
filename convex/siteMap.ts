@@ -5,6 +5,7 @@ import { mutation, query } from "./_generated/server";
 
 export const createSite = mutation({
   args: {
+    accountNumber: v.string(),
     name: v.string(),
     description: v.optional(v.string()),
     address: v.optional(v.string()),
@@ -12,6 +13,7 @@ export const createSite = mutation({
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("sites", {
+      accountNumber: args.accountNumber,
       name: args.name,
       description: args.description,
       address: args.address,
@@ -54,6 +56,7 @@ export const updateSite = mutation({
 export const createFloor = mutation({
   args: {
     siteId: v.id("sites"),
+    areaNumber: v.string(),
     name: v.string(),
     floorNumber: v.number(),
     width: v.number(),
@@ -64,6 +67,7 @@ export const createFloor = mutation({
   handler: async (ctx, args) => {
     return await ctx.db.insert("floors", {
       siteId: args.siteId,
+      areaNumber: args.areaNumber,
       name: args.name,
       floorNumber: args.floorNumber,
       floorPlanStorageId: args.floorPlanStorageId,
@@ -133,7 +137,7 @@ export const createSensor = mutation({
     accountNumber: v.string(),
     name: v.string(),
     type: v.string(),
-    zone: v.optional(v.string()),
+    zone: v.string(),
     positionX: v.number(),
     positionY: v.number(),
     icon: v.optional(v.string()),

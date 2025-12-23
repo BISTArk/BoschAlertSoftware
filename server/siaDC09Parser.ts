@@ -14,6 +14,7 @@ export interface SiaDC09Message {
   raw: string;
   accountNumber: string;
   receiverId?: string;
+  areaNumber?: string; // Extracted from receiverId (e.g., "Nri01" -> "01")
   eventCode: string;
   eventQualifier?: string; // E, R, A, etc.
   zoneNumber?: string;
@@ -139,6 +140,15 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
     const restParts = parts[1].split("/");
     const receiverId = restParts[0]?.trim();
     
+    // Extract area/partition number from receiverId (e.g., "Nri01" -> "01")
+    let areaNumber = "";
+    if (receiverId) {
+      const areaMatch = receiverId.match(/(\d{2})$/); // Extract last 2 digits
+      if (areaMatch) {
+        areaNumber = areaMatch[1];
+      }
+    }
+    
     // Extract event code (first 2-3 characters after first /)
     let eventCode = "";
     let zoneNumber = "";
@@ -209,6 +219,7 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
       raw: message,
       accountNumber,
       receiverId,
+      areaNumber,
       eventCode,
       eventQualifier,
       zoneNumber,

@@ -14,8 +14,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const TCP_HOST = "localhost";
-const TCP_PORT = 4000;
-const PACKET_DELAY_MS = 500; // Delay between packets (500ms = 2 packets/second)
+const TCP_PORT = 7800; // Must match siaReceiver.ts TCP_PORT
+const PACKET_DELAY_MS = 2000; // Delay between packets (2s = 0.5 packets/second)
 
 interface TcpPacket {
   packet_number: number;

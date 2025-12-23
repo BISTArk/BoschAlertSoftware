@@ -20,19 +20,23 @@ export default defineSchema({
     .index("by_floor", ["currentFloorId"])
     .index("by_role_and_available", ["role", "available"]),
 
+  // ACCOUNTS (formerly "sites") - Represents customer accounts/locations
   sites: defineTable({
+    accountNumber: v.string(), // SIA DC-09 account number (e.g., "3333", "2222")
     name: v.string(),
     description: v.optional(v.string()),
     address: v.optional(v.string()),
     active: v.boolean(),
     createdAt: v.number(),
     createdBy: v.id("users"),
-  }),
+  }).index("by_account_number", ["accountNumber"]),
 
+  // AREAS (formerly "floors") - Represents areas/partitions within an account
   floors: defineTable({
-    siteId: v.id("sites"),
-    name: v.string(), // e.g., "Floor 1", "Ground Floor", "Basement"
-    floorNumber: v.number(),
+    siteId: v.id("sites"), // Links to account (site)
+    areaNumber: v.string(), // SIA DC-09 area number (e.g., "01", "02") - extracted from receiverId
+    name: v.string(), // e.g., "Area 01 - Ground Floor", "Area 02 - First Floor"
+    floorNumber: v.number(), // Numeric ordering for display
     floorPlanUrl: v.optional(v.string()), // URL to uploaded floor plan image
     floorPlanStorageId: v.optional(v.string()), // Convex storage ID
     width: v.number(), // Floor plan dimensions for coordinate system
@@ -40,14 +44,16 @@ export default defineSchema({
     active: v.boolean(),
     createdAt: v.number(),
   }).index("by_site", ["siteId"])
-    .index("by_site_and_floor", ["siteId", "floorNumber"]),
+    .index("by_site_and_floor", ["siteId", "floorNumber"])
+    .index("by_site_and_area", ["siteId", "areaNumber"]),
 
+  // SENSORS/POINTS/ZONES - Represents individual sensors within an area
   sensors: defineTable({
-    floorId: v.id("floors"),
-    accountNumber: v.string(), // Links to alert accountNumber
+    floorId: v.id("floors"), // Links to area (floor)
+    accountNumber: v.string(), // Account number this sensor belongs to
     name: v.string(), // e.g., "Server Room Door", "Main Entrance"
     type: v.string(), // e.g., "door", "motion", "fire", "panic", "camera"
-    zone: v.optional(v.string()),
+    zone: v.string(), // SIA DC-09 zone/point number (e.g., "0005", "0010")
     // Position on floor plan (percentage or pixel coordinates)
     positionX: v.number(),
     positionY: v.number(),
@@ -68,6 +74,7 @@ export default defineSchema({
     // Core SIA DC-09 fields from format: [#AccountNumber|ReceiverId/EventCode/AreaInfo]
     accountNumber: v.optional(v.string()), // Customer account number (e.g., "3333") - TEMPORARY: optional for migration
     receiverId: v.optional(v.string()), // Receiver ID (e.g., "Nri01")
+    areaNumber: v.optional(v.string()), // Area/Partition number extracted from receiverId (e.g., "01" from "Nri01")
     eventCode: v.optional(v.string()), // Two-letter event code (e.g., "BA", "BH", "BR", "BC") - TEMPORARY: optional for migration
     zoneNumber: v.optional(v.string()), // Zone number from event (e.g., "0008")
     userName: v.optional(v.string()), // User name for access control events
@@ -139,5 +146,6 @@ export default defineSchema({
     .index("by_event_qualifier", ["eventQualifier"])
     .index("by_sensor", ["sensorId"])
     .index("by_category", ["eventCategory"])
-    .index("by_priority_and_time", ["priority", "receivedAt"]),
+    .index("by_priority_and_time", ["priority", "receivedAt"])
+    .index("by_account_and_area", ["accountNumber", "areaNumber"]),
 });

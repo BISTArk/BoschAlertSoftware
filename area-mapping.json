@@ -1,0 +1,142 @@
+{
+  "$schema": "area-mapping-schema",
+  "version": "1.0",
+  "description": "Maps account-area combinations to floor plans with sensor/point positions",
+  "lastUpdated": "2025-12-23",
+  "areas": {
+    "3333-01": {
+      "accountNumber": "3333",
+      "areaNumber": "01",
+      "areaName": "Main Building - Ground Floor",
+      "description": "Primary security area with main entrance and monitoring points",
+      "floorPlanUrl": "/floor-plans/3333-area-01.png",
+      "dimensions": {
+        "width": 1000,
+        "height": 800
+      },
+      "sensors": {
+        "0001": {
+          "name": "User Access Point",
+          "type": "access_control",
+          "description": "Main entrance card reader",
+          "positionX": 150,
+          "positionY": 400,
+          "icon": "door",
+          "color": "#3b82f6"
+        },
+        "0005": {
+          "name": "Point 5 - Monitoring Station",
+          "type": "panic",
+          "description": "Security monitoring station with panic button",
+          "positionX": 500,
+          "positionY": 300,
+          "icon": "alert",
+          "color": "#ef4444"
+        },
+        "0008": {
+          "name": "Zone 8 - Main Entrance",
+          "type": "motion",
+          "description": "Motion sensor at primary entrance",
+          "positionX": 200,
+          "positionY": 500,
+          "icon": "sensor",
+          "color": "#f97316"
+        }
+      }
+    },
+    "3333-02": {
+      "accountNumber": "3333",
+      "areaNumber": "02",
+      "areaName": "Main Building - First Floor",
+      "description": "First floor security monitoring area",
+      "floorPlanUrl": "/floor-plans/3333-area-02.png",
+      "dimensions": {
+        "width": 1000,
+        "height": 800
+      },
+      "sensors": {
+        "0010": {
+          "name": "Conference Room Entry",
+          "type": "door",
+          "description": "Conference room access control",
+          "positionX": 300,
+          "positionY": 200,
+          "icon": "door",
+          "color": "#3b82f6"
+        },
+        "0011": {
+          "name": "Server Room Motion",
+          "type": "motion",
+          "description": "Server room motion detector",
+          "positionX": 700,
+          "positionY": 400,
+          "icon": "sensor",
+          "color": "#f97316"
+        }
+      }
+    },
+    "2222-01": {
+      "accountNumber": "2222",
+      "areaNumber": "01",
+      "areaName": "Electronics City - Warehouse Floor",
+      "description": "Warehouse security monitoring area",
+      "floorPlanUrl": "/floor-plans/2222-area-01.png",
+      "dimensions": {
+        "width": 1200,
+        "height": 900
+      },
+      "sensors": {
+        "0001": {
+          "name": "Loading Dock Entry",
+          "type": "door",
+          "description": "Loading dock access control",
+          "positionX": 200,
+          "positionY": 600,
+          "icon": "door",
+          "color": "#3b82f6"
+        },
+        "0002": {
+          "name": "Warehouse Motion Sensor",
+          "type": "motion",
+          "description": "Main warehouse area motion detector",
+          "positionX": 600,
+          "positionY": 400,
+          "icon": "sensor",
+          "color": "#f97316"
+        }
+      }
+    }
+  },
+  "sensorTypes": {
+    "access_control": {
+      "displayName": "Access Control",
+      "defaultIcon": "door",
+      "defaultColor": "#3b82f6"
+    },
+    "motion": {
+      "displayName": "Motion Sensor",
+      "defaultIcon": "sensor",
+      "defaultColor": "#f97316"
+    },
+    "panic": {
+      "displayName": "Panic Button",
+      "defaultIcon": "alert",
+      "defaultColor": "#ef4444"
+    },
+    "door": {
+      "displayName": "Door Contact",
+      "defaultIcon": "door",
+      "defaultColor": "#3b82f6"
+    },
+    "fire": {
+      "displayName": "Fire Alarm",
+      "defaultIcon": "flame",
+      "defaultColor": "#dc2626"
+    },
+    "camera": {
+      "displayName": "Security Camera",
+      "defaultIcon": "camera",
+      "defaultColor": "#8b5cf6"
+    }
+  }
+}

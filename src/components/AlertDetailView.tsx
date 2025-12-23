@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertActions } from "@/components/AlertActions";
+import { AreaFloorPlanView } from "@/components/AreaFloorPlanView";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -538,6 +539,16 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Area Floor Plan - Full Width Section */}
+      <div className="px-6 pb-6">
+        <AreaFloorPlanView
+          accountNumber={alert.accountNumber}
+          areaNumber={alert.areaNumber}
+          zoneNumber={alert.zoneNumber}
+          priority={alert.priority || alert.severity}
+        />
       </div>
 
       {/* Confirmation Dialogs */}
