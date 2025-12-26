@@ -2,88 +2,44 @@
   "$schema": "location-mapping-schema",
   "version": "1.0",
   "description": "Maps security system account numbers to real-world geographic locations (for map view only)",
-  "lastUpdated": "2025-12-24",
+  "lastUpdated": "2025-12-27",
   "note": "This file contains only account-level coordinates for displaying sites on a map. Individual areas and sensors are defined in area-mapping.json with floor plans.",
   "accounts": {
     "3333": {
-      "name": "AISAC Security Campus - Bangalore",
-      "address": "Vijayanagar, Bangalore",
-      "city": "Bangalore",
-      "state": "Karnataka",
-      "country": "India",
+      "name": "AISAC Security Campus - Riyadh",
+      "address": "King Abdulaziz Road, Riyadh",
+      "city": "Riyadh",
+      "state": "Riyadh Province",
+      "country": "Saudi Arabia",
       "coordinates": {
-        "lat": 12.9716,
-        "lng": 77.5946
+        "lat": 24.7136,
+        "lng": 46.6753
       },
       "description": "Main campus security facility"
     },
     "2222": {
-      "name": "Secondary Security Site - Electronics City",
-      "address": "Electronics City Phase 1, Bangalore",
-      "city": "Bangalore",
-      "state": "Karnataka",
-      "country": "India",
+      "name": "Secondary Security Site - Riyadh Mall",
+      "address": "Riyadh Mall, Riyadh",
+      "city": "Riyadh",
+      "state": "Riyadh Province",
+      "country": "Saudi Arabia",
       "coordinates": {
-        "lat": 12.8456,
-        "lng": 77.6603
+        "lat": 24.6974,
+        "lng": 46.6844
       },
       "description": "Warehouse and server facility"
     },
     "1111": {
-      "name": "Branch Office - Whitefield",
-      "address": "Whitefield Main Road, Bangalore",
-      "city": "Bangalore",
-      "state": "Karnataka",
-      "country": "India",
+      "name": "Branch Office - Kingdom Centre",
+      "address": "Kingdom Centre, Riyadh",
+      "city": "Riyadh",
+      "state": "Riyadh Province",
+      "country": "Saudi Arabia",
       "coordinates": {
-        "lat": 12.9698,
-        "lng": 77.7500
+        "lat": 24.7114,
+        "lng": 46.6744
       },
       "description": "Branch office location"
-    }
-  },
-  "eventTypes": {
-    "BA": {
-      "name": "Burglary Alarm",
-      "priority": "high",
-      "color": "#ef4444",
-      "icon": "alert-triangle"
-    },
-    "BH": {
-      "name": "Hold-up Alarm",
-      "priority": "critical",
-      "color": "#dc2626",
-      "icon": "alert-octagon"
-    },
-    "BR": {
-      "name": "Burglary Restoral",
-      "priority": "low",
-      "color": "#22c55e",
-      "icon": "check-circle"
-    },
-    "PA": {
-      "name": "Panic Alarm",
-      "priority": "critical",
-      "color": "#dc2626",
-      "icon": "siren"
-    },
-    "FA": {
-      "name": "Fire Alarm",
-      "priority": "critical",
-      "color": "#f97316",
-      "icon": "flame"
-    },
-    "XW": {
-      "name": "Tamper/Trouble",
-      "priority": "medium",
-      "color": "#eab308",
-      "icon": "alert-circle"
-    },
-    "id": {
-      "name": "Access Control",
-      "priority": "low",
-      "color": "#3b82f6",
-      "icon": "key"
     }
   },
   "mapSettings": {
@@ -91,8 +47,8 @@
     "minZoom": 10,
     "maxZoom": 18,
     "defaultCenter": {
-      "lat": 12.9716,
-      "lng": 77.5946
+      "lat": 24.7136,
+      "lng": 46.6753
     },
     "tileLayer": "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
     "attribution": "© OpenStreetMap contributors"
