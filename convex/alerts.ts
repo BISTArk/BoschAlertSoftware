@@ -1,5 +1,83 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+
+/**
+ * AUTO-ASSIGNMENT LOGIC - ROUND ROBIN
+ * 
+ * This function determines which guard should be assigned to a new alert.
+ * Current implementation: Simple round-robin rotation through available guards.
+ * 
+ * TO CHANGE ASSIGNMENT LOGIC:
+ * Replace this function with your preferred strategy:
+ * - Load balancing (assign to guard with fewest active alerts)
+ * - Zone-based (assign based on sensor location)
+ * - Skill-based (assign based on guard expertise)
+ * - Priority-based (assign critical alerts to specific guards)
+ * - Time-based (assign based on shift schedules)
+ * 
+ * @param ctx - Convex context for database queries
+ * @param alertData - Information about the alert being assigned
+ * @returns Guard ID to assign, or null if no guards available
+ */
+async function determineGuardAssignment(
+  ctx: any,
+  alertData: {
+    accountNumber: string;
+    priority: "critical" | "high" | "medium" | "low";
+    eventCategory: string;
+    zoneNumber?: string;
+  }
+): Promise<Id<"users"> | null> {
+  // Get all available guards
+  const availableGuards = await ctx.db
+    .query("users")
+    .withIndex("by_role_and_available", (q) => 
+      q.eq("role", "guard").eq("available", true)
+    )
+    .collect();
+
+  if (availableGuards.length === 0) {
+    console.log("⚠️  No available guards for auto-assignment");
+    return null;
+  }
+
+  // ROUND-ROBIN IMPLEMENTATION
+  // Find the most recently assigned alert to determine rotation position
+  const recentAlerts = await ctx.db
+    .query("alerts")
+    .withIndex("by_received_at")
+    .order("desc")
+    .take(10); // Check last 10 alerts for assignment pattern
+
+  // Find last assigned guard
+  let lastAssignedGuard: Id<"users"> | null = null;
+  for (const alert of recentAlerts) {
+    if (alert.assignedTo) {
+      lastAssignedGuard = alert.assignedTo;
+      break;
+    }
+  }
+
+  // If no previous assignment, start with first guard
+  if (!lastAssignedGuard) {
+    console.log(`🎯 Auto-assigned to ${availableGuards[0].name} (first in rotation)`);
+    return availableGuards[0]._id;
+  }
+
+  // Find current guard's index in available guards list
+  const currentIndex = availableGuards.findIndex(g => g._id === lastAssignedGuard);
+  
+  // Move to next guard (wrap around to start if needed)
+  const nextIndex = currentIndex >= 0 
+    ? (currentIndex + 1) % availableGuards.length
+    : 0;
+
+  const assignedGuard = availableGuards[nextIndex];
+  console.log(`🎯 Auto-assigned to ${assignedGuard.name} (round-robin)`);
+  
+  return assignedGuard._id;
+}
 
 // Create alert from SIA DC-09 parsed message
 export const createSiaDC09Alert = mutation({
@@ -52,6 +130,17 @@ export const createSiaDC09Alert = mutation({
       ? "unassigned" as const 
       : "unassigned" as const;
 
+    // AUTO-ASSIGN guard using round-robin strategy
+    const assignedGuardId = await determineGuardAssignment(ctx, {
+      accountNumber: args.accountNumber,
+      priority: args.priority,
+      eventCategory: args.eventCategory,
+      zoneNumber: args.zoneNumber,
+    });
+
+    // Set status based on whether guard was assigned
+    const finalStatus = assignedGuardId ? "assigned" as const : initialStatus;
+
     const alertId = await ctx.db.insert("alerts", {
       rawMessage: args.rawMessage,
       accountNumber: args.accountNumber,
@@ -70,10 +159,17 @@ export const createSiaDC09Alert = mutation({
       receivedAt: Date.now(),
       eventTimestamp: args.eventTimestamp,
       acknowledged: false,
-      status: initialStatus,
+      status: finalStatus,
+      assignedTo: assignedGuardId || undefined,
+      assignedAt: assignedGuardId ? Date.now() : undefined,
     });
 
-    console.log(`Created SIA DC-09 alert: ${alertId} - ${args.eventDescription}`);
+    if (assignedGuardId) {
+      console.log(`Created SIA DC-09 alert: ${alertId} - ${args.eventDescription} [AUTO-ASSIGNED]`);
+    } else {
+      console.log(`Created SIA DC-09 alert: ${alertId} - ${args.eventDescription} [UNASSIGNED]`);
+    }
+    
     return alertId;
   },
 });

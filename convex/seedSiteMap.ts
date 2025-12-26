@@ -24,7 +24,7 @@ export default internalMutation(async (ctx) => {
 
   // Create a sample site
   const siteId = await ctx.db.insert("sites", {
-    name: "Bosch Headquarters",
+    name: "AISAC Headquarters",
     description: "Main office building with server rooms and security systems",
     address: "123 Industrial Drive, Tech City",
     active: true,
@@ -35,8 +35,8 @@ export default internalMutation(async (ctx) => {
   // Create floors
   const groundFloorId = await ctx.db.insert("floors", {
     siteId,
+    areaNumber: "01",
     name: "Ground Floor",
-    floorNumber: 0,
     width: 1200,
     height: 800,
     active: true,
@@ -45,8 +45,8 @@ export default internalMutation(async (ctx) => {
 
   const floor1Id = await ctx.db.insert("floors", {
     siteId,
+    areaNumber: "02",
     name: "Floor 1",
-    floorNumber: 1,
     width: 1200,
     height: 800,
     active: true,
@@ -55,8 +55,8 @@ export default internalMutation(async (ctx) => {
 
   const floor2Id = await ctx.db.insert("floors", {
     siteId,
+    areaNumber: "03",
     name: "Floor 2 - Server Room",
-    floorNumber: 2,
     width: 1200,
     height: 800,
     active: true,

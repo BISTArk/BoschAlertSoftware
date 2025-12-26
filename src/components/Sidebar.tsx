@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useNavigate } from "react-router-dom";
 import {
   LayoutDashboard,
   AlertCircle,
@@ -10,6 +11,7 @@ import {
   Settings,
   Shield,
   BarChart3,
+  BookOpen,
 } from "lucide-react";
 
 interface SidebarProps {
@@ -19,6 +21,7 @@ interface SidebarProps {
 
 export function Sidebar({ currentView, onNavigate }: SidebarProps) {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const navigationItems = [
     { id: "dashboard", label: "Home", icon: LayoutDashboard, roles: ["guard", "head", "admin"] },
@@ -72,6 +75,18 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
             </button>
           );
         })}
+
+        {/* Documentation Link */}
+        <button
+          onClick={() => navigate('/docs')}
+          className={cn(
+            "w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors",
+            "text-muted-foreground hover:bg-accent hover:text-accent-foreground border-t border-border mt-4 pt-4"
+          )}
+        >
+          <BookOpen className="h-5 w-5" />
+          <span>Documentation</span>
+        </button>
       </nav>
 
       {/* User Info Footer */}

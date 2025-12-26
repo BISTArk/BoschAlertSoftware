@@ -2,7 +2,7 @@
  * Stream SIA DC-09 Packets to TCP Server
  * 
  * Reads decoded packets from JSON file and streams them to the local TCP server
- * Simulates real-time packet arrival from Bosch security panels
+ * Simulates real-time packet arrival from security panels
  */
 
 import net from "net";
@@ -141,7 +141,7 @@ async function streamPackets() {
 }
 
 // Run if executed directly
-if (import.meta.url === `file://${process.argv[1]}`) {
+// if (import.meta.url === `file://${process.argv[1]}`) {
   console.log("\n⚠️  Make sure the TCP server is running first!");
   console.log("   Start it with: npx tsx server/siaReceiver.ts\n");
   
@@ -149,6 +149,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   setTimeout(() => {
     streamPackets().catch(console.error);
   }, 2000);
-}
+// }
 
 export { streamPackets, sendPacket };

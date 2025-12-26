@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Test script for sending SIA messages to the Bosch Alert Hub
+# Test script for sending SIA messages to AISAC
 # This script sends various SIA DC-09 format messages to test the system
 
 echo "🚀 Bosch Alert Hub - SIA Message Test Script"

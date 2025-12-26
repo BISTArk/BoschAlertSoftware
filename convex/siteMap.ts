@@ -58,7 +58,6 @@ export const createFloor = mutation({
     siteId: v.id("sites"),
     areaNumber: v.string(),
     name: v.string(),
-    floorNumber: v.number(),
     width: v.number(),
     height: v.number(),
     floorPlanStorageId: v.optional(v.string()),
@@ -69,7 +68,6 @@ export const createFloor = mutation({
       siteId: args.siteId,
       areaNumber: args.areaNumber,
       name: args.name,
-      floorNumber: args.floorNumber,
       floorPlanStorageId: args.floorPlanStorageId,
       floorPlanUrl: args.floorPlanUrl,
       width: args.width,
@@ -87,7 +85,8 @@ export const getFloorsBySite = query({
       .query("floors")
       .withIndex("by_site", (q) => q.eq("siteId", args.siteId))
       .filter((q) => q.eq(q.field("active"), true))
-      .collect();
+      .collect()
+      .then(floors => floors.sort((a, b) => a.areaNumber.localeCompare(b.areaNumber)));
   },
 });
 
@@ -113,11 +112,72 @@ export const getFloor = query({
   },
 });
 
+export const getFloorByAccountAndArea = query({
+  args: { 
+    accountNumber: v.string(),
+    areaNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find site by account number
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_account_number", (q) => q.eq("accountNumber", args.accountNumber))
+      .filter((q) => q.eq(q.field("active"), true))
+      .first();
+    
+    if (!site) return null;
+    
+    // Find floor by site and area number
+    const floor = await ctx.db
+      .query("floors")
+      .withIndex("by_site_and_area", (q) => 
+        q.eq("siteId", site._id).eq("areaNumber", args.areaNumber)
+      )
+      .filter((q) => q.eq(q.field("active"), true))
+      .first();
+    
+    return floor;
+  },
+});
+
+export const getSensorsByAccountAndArea = query({
+  args: { 
+    accountNumber: v.string(),
+    areaNumber: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find the floor first
+    const site = await ctx.db
+      .query("sites")
+      .withIndex("by_account_number", (q) => q.eq("accountNumber", args.accountNumber))
+      .filter((q) => q.eq(q.field("active"), true))
+      .first();
+    
+    if (!site) return [];
+    
+    const floor = await ctx.db
+      .query("floors")
+      .withIndex("by_site_and_area", (q) => 
+        q.eq("siteId", site._id).eq("areaNumber", args.areaNumber)
+      )
+      .filter((q) => q.eq(q.field("active"), true))
+      .first();
+    
+    if (!floor) return [];
+    
+    // Get sensors for this floor
+    return await ctx.db
+      .query("sensors")
+      .withIndex("by_floor", (q) => q.eq("floorId", floor._id))
+      .filter((q) => q.eq(q.field("active"), true))
+      .collect();
+  },
+});
+
 export const updateFloor = mutation({
   args: {
     floorId: v.id("floors"),
     name: v.optional(v.string()),
-    floorNumber: v.optional(v.number()),
     width: v.optional(v.number()),
     height: v.optional(v.number()),
     floorPlanStorageId: v.optional(v.string()),

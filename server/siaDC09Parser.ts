@@ -1,7 +1,7 @@
 /**
  * SIA DC-09 Protocol Parser
  * 
- * Parses messages in SIA-DC-09 format from Bosch security panels
+ * Parses messages in SIA-DC-09 format from security panels
  * Format: [#AccountNumber|ReceiverId/EventCode/AreaInfo]
  * 
  * Examples:

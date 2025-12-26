@@ -255,7 +255,9 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-1">
-                                    📍 {alert.accountNumber || alert.customerAccount || "N/A"} {alert.zoneNumber && `- Zone ${alert.zoneNumber}`}
+                                    📍 Account {alert.accountNumber || alert.customerAccount || "N/A"}
+                                    {alert.areaNumber && ` • Area ${alert.areaNumber}`}
+                                    {alert.zoneNumber && ` • Zone ${alert.zoneNumber}`}
                                   </p>
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>
@@ -307,7 +309,9 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-1">
-                                    📍 {alert.accountNumber || alert.customerAccount || "N/A"} {alert.zoneNumber && `- Zone ${alert.zoneNumber}`}
+                                    📍 Account {alert.accountNumber || alert.customerAccount || "N/A"}
+                                    {alert.areaNumber && ` • Area ${alert.areaNumber}`}
+                                    {alert.zoneNumber && ` • Zone ${alert.zoneNumber}`}
                                   </p>
                                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                                     <span>⏰ {formatTimeAgo(alert.receivedAt)}</span>

@@ -4,7 +4,6 @@ import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/AuthContext";
 import { LiveAreaMap } from "@/components/LiveAreaMap";
-import { LiveSiteMap } from "@/components/LiveSiteMap";
 import { SiteMapSetup } from "@/components/SiteMapSetup";
 import { FloorPlanEditor } from "@/components/FloorPlanEditor";
 import { Button } from "@/components/ui/button";
@@ -19,7 +18,7 @@ import { Settings, Map, MapPin } from "lucide-react";
 
 export function SiteMapPage() {
   const { user } = useAuth();
-  const [viewMode, setViewMode] = useState<"live" | "setup" | "editor" | "areas">("areas");
+  const [viewMode, setViewMode] = useState<"setup" | "editor" | "areas">("areas");
   const [selectedSite, setSelectedSite] = useState<Id<"sites"> | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<Id<"floors"> | null>(null);
 
@@ -49,11 +48,9 @@ export function SiteMapPage() {
           <p className="text-muted-foreground">
             {viewMode === "areas"
               ? "View areas with real-time alerts"
-              : viewMode === "live"
-              ? "Real-time alert visualization (legacy)"
               : viewMode === "editor"
               ? "Drag sensors to update positions"
-              : "Configure sensors and floor plans"}
+              : "Configure sensors and area plans"}
           </p>
         </div>
 
@@ -67,13 +64,6 @@ export function SiteMapPage() {
           </Button>
           {isAdmin && (
             <>
-              <Button
-                variant={viewMode === "live" ? "default" : "outline"}
-                onClick={() => setViewMode("live")}
-              >
-                <Map className="h-4 w-4 mr-2" />
-                Live Map
-              </Button>
               <Button
                 variant={viewMode === "editor" ? "default" : "outline"}
                 onClick={() => setViewMode("editor")}
@@ -151,66 +141,6 @@ export function SiteMapPage() {
                 {sites && sites.length === 0
                   ? "No sites configured. Run the seed command: npx convex run seedAreaMap"
                   : "Select an account and area to view sensors and alerts."}
-              </p>
-            </div>
-          )}
-        </>
-      ) : viewMode === "live" ? (
-        <>
-          {/* Site and Floor Selection */}
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Site:</span>
-              <Select
-                value={selectedSite || undefined}
-                onValueChange={(value) => {
-                  setSelectedSite(value as Id<"sites">);
-                  setSelectedFloor(null);
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select site" />
-                </SelectTrigger>
-                <SelectContent>
-                  {sites?.map((site) => (
-                    <SelectItem key={site._id} value={site._id}>
-                      {site.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium">Floor:</span>
-              <Select
-                value={selectedFloor || undefined}
-                onValueChange={(value) => setSelectedFloor(value as Id<"floors">)}
-                disabled={!selectedSite}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Select floor" />
-                </SelectTrigger>
-                <SelectContent>
-                  {floors?.map((floor) => (
-                    <SelectItem key={floor._id} value={floor._id}>
-                      {floor.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* Live Map */}
-          {selectedFloor ? (
-            <LiveSiteMap floorId={selectedFloor} />
-          ) : (
-            <div className="border border-border rounded-lg p-12 text-center">
-              <p className="text-muted-foreground">
-                {sites && sites.length === 0
-                  ? "No sites configured. Create a site in Setup mode."
-                  : "Select a site and floor to view the live map."}
               </p>
             </div>
           )}

@@ -35,8 +35,8 @@ export default internalMutation(async (ctx) => {
   console.log(`\nFound ${floors.length} floors to update`);
 
   for (const floor of floors) {
-    // Extract area number from floor name or use floorNumber
-    let areaNumber = String(floor.floorNumber).padStart(2, '0');
+    // Extract area number from floor name
+    let areaNumber = "01"; // Default
     
     // Try to extract from name (e.g., "Area 01" or "01 - Name")
     const areaMatch = floor.name.match(/Area\s+(\d{2})|^(\d{2})\s*-/);

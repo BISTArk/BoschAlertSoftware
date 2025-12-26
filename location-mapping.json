@@ -1,114 +1,45 @@
 {
   "$schema": "location-mapping-schema",
   "version": "1.0",
-  "description": "Maps security system account numbers to real-world locations with coordinates for each zone",
-  "lastUpdated": "2025-12-22",
+  "description": "Maps security system account numbers to real-world geographic locations (for map view only)",
+  "lastUpdated": "2025-12-24",
+  "note": "This file contains only account-level coordinates for displaying sites on a map. Individual areas and sensors are defined in area-mapping.json with floor plans.",
   "accounts": {
     "3333": {
-      "name": "Bosch Security Campus - Bangalore",
+      "name": "AISAC Security Campus - Bangalore",
+      "address": "Vijayanagar, Bangalore",
       "city": "Bangalore",
       "state": "Karnataka",
       "country": "India",
-      "centerCoordinates": {
+      "coordinates": {
         "lat": 12.9716,
         "lng": 77.5946
       },
-      "zones": {
-        "0008": {
-          "name": "Zone 8 - Main Entrance",
-          "type": "entry_point",
-          "location": "Vijayanagar Main Gate",
-          "coordinates": {
-            "lat": 12.9750,
-            "lng": 77.5920
-          },
-          "description": "Primary entrance at Vijayanagar Main Gate"
-        },
-        "0005": {
-          "name": "Zone 5 - Rajajinagar Wing",
-          "type": "general",
-          "location": "Rajajinagar Wing",
-          "coordinates": {
-            "lat": 12.9730,
-            "lng": 77.5965
-          },
-          "description": "Security zone in Rajajinagar Wing"
-        },
-        "0001": {
-          "name": "Zone 1 - Yeshwanthpur Entry",
-          "type": "access_control",
-          "location": "Yeshwanthpur Entry",
-          "coordinates": {
-            "lat": 12.9770,
-            "lng": 77.5970
-          },
-          "description": "Access control point at Yeshwanthpur Entry"
-        }
-      }
+      "description": "Main campus security facility"
     },
     "2222": {
       "name": "Secondary Security Site - Electronics City",
+      "address": "Electronics City Phase 1, Bangalore",
       "city": "Bangalore",
       "state": "Karnataka",
       "country": "India",
-      "centerCoordinates": {
+      "coordinates": {
         "lat": 12.8456,
         "lng": 77.6603
       },
-      "zones": {
-        "0001": {
-          "name": "Zone 1 - Warehouse",
-          "type": "entry_point",
-          "location": "Electronics City Phase 1",
-          "coordinates": {
-            "lat": 12.8450,
-            "lng": 77.6590
-          },
-          "description": "Warehouse facility in Electronics City Phase 1"
-        },
-        "0002": {
-          "name": "Zone 2 - Server Room",
-          "type": "critical",
-          "location": "Electronics City Phase 2",
-          "coordinates": {
-            "lat": 12.8470,
-            "lng": 77.6620
-          },
-          "description": "Server room in Electronics City Phase 2"
-        }
-      }
+      "description": "Warehouse and server facility"
     },
     "1111": {
       "name": "Branch Office - Whitefield",
+      "address": "Whitefield Main Road, Bangalore",
       "city": "Bangalore",
       "state": "Karnataka",
       "country": "India",
-      "centerCoordinates": {
+      "coordinates": {
         "lat": 12.9698,
         "lng": 77.7500
       },
-      "zones": {
-        "0001": {
-          "name": "Zone 1 - Reception",
-          "type": "general",
-          "location": "Whitefield Main Office",
-          "coordinates": {
-            "lat": 12.9698,
-            "lng": 77.7500
-          },
-          "description": "Reception area at Whitefield Main Office"
-        },
-        "0003": {
-          "name": "Zone 3 - Rear Entrance",
-          "type": "entry_point",
-          "location": "Whitefield Rear Entrance",
-          "coordinates": {
-            "lat": 12.9690,
-            "lng": 77.7510
-          },
-          "description": "Rear entrance at Whitefield office"
-        }
-      }
+      "description": "Branch office location"
     }
   },
   "eventTypes": {

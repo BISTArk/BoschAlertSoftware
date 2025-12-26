@@ -290,8 +290,8 @@ export function FloorPlanEditor() {
     <div className="container mx-auto px-4 py-8 space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Floor Plan Editor</h1>
-          <p className="text-muted-foreground">Drag sensors to update their positions on the floor plan</p>
+          <h1 className="text-3xl font-bold">Area Plan Editor</h1>
+          <p className="text-muted-foreground">Drag sensors to update their positions on the area plan</p>
         </div>
         {hasChanges && (
           <div className="flex gap-2">
@@ -381,12 +381,12 @@ export function FloorPlanEditor() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Move className="h-5 w-5" />
-              Floor Plan
+              Area Plan
             </CardTitle>
             <CardDescription>
               {selectedFloor
                 ? "Click and drag sensors to reposition them. Click Save to update."
-                : "Select a floor to begin editing"}
+                : "Select an area to begin editing"}
             </CardDescription>
           </CardHeader>
           <CardContent>

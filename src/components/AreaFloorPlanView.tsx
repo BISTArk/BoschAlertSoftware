@@ -1,10 +1,9 @@
 import { useEffect, useRef } from "react";
+import { useQuery } from "convex/react";
+import { api } from "../../convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { AlertCircle, Camera, Flame, Lock, Radio } from "lucide-react";
-
-// Import area mapping
-import areaMapping from "../../area-mapping.json";
 
 interface AreaFloorPlanViewProps {
   accountNumber?: string;
@@ -49,19 +48,86 @@ export function AreaFloorPlanView({
 }: AreaFloorPlanViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
-  // Get area data from mapping
+  // Fetch floor plan from database
+  const dbFloor = useQuery(
+    api.siteMap.getFloorByAccountAndArea,
+    accountNumber && areaNumber ? {
+      accountNumber,
+      areaNumber,
+    } : "skip"
+  );
+
+  // Fetch sensors from database
+  const dbSensors = useQuery(
+    api.siteMap.getSensorsByAccountAndArea,
+    accountNumber && areaNumber ? {
+      accountNumber,
+      areaNumber,
+    } : "skip"
+  );
+
+  // Fetch all alerts for this area
+  const allAlerts = useQuery(api.alerts.getAlerts, {
+    filters: accountNumber && areaNumber ? {
+      accountNumber,
+    } : {},
+  });
+
+  // Filter alerts for this specific area
+  const areaAlerts = allAlerts?.page.filter(alert => 
+    alert.accountNumber === accountNumber && 
+    alert.areaNumber === areaNumber
+  ) || [];
+
+  // Get area data from database
   const getAreaData = () => {
     if (!accountNumber || !areaNumber) {
       console.log("AreaFloorPlanView: Missing data", { accountNumber, areaNumber });
       return null;
     }
     
-    const areaKey = `${accountNumber}-${areaNumber}`;
-    console.log("AreaFloorPlanView: Looking for area key:", areaKey);
-    const areas = areaMapping.areas as Record<string, any>;
-    const data = areas[areaKey] || null;
-    console.log("AreaFloorPlanView: Found area data:", data ? "YES" : "NO");
-    return data;
+    console.log("AreaFloorPlanView: Query results - dbFloor:", dbFloor, "dbSensors:", dbSensors);
+    
+    // Use database data only
+    if (!dbFloor || dbSensors === undefined) {
+      console.log("AreaFloorPlanView: No floor plan found in database for Account", accountNumber, "Area", areaNumber);
+      return null;
+    }
+
+    console.log("AreaFloorPlanView: Using database floor plan", {
+      name: dbFloor.name,
+      floorPlanUrl: dbFloor.floorPlanUrl,
+      width: dbFloor.width,
+      height: dbFloor.height,
+      sensorCount: dbSensors.length
+    });
+    
+    // Convert database sensors to expected format
+    const sensorsMap: Record<string, any> = {};
+    dbSensors.forEach((sensor: any) => {
+      sensorsMap[sensor.zone] = {
+        name: sensor.name,
+        type: sensor.type,
+        description: sensor.name,
+        positionX: sensor.positionX,
+        positionY: sensor.positionY,
+        icon: sensor.icon || "sensor",
+        color: sensor.color || "#6b7280",
+      };
+    });
+    
+    return {
+      accountNumber,
+      areaNumber,
+      areaName: dbFloor.name,
+      description: `Area ${dbFloor.areaNumber}`,
+      floorPlanUrl: dbFloor.floorPlanUrl || "",
+      dimensions: {
+        width: dbFloor.width,
+        height: dbFloor.height,
+      },
+      sensors: sensorsMap,
+    };
   };
 
   const areaData = getAreaData();
@@ -79,77 +145,112 @@ export function AreaFloorPlanView({
     canvas.width = width;
     canvas.height = height;
 
-    // Clear canvas
-    ctx.fillStyle = "#1a1a1a";
-    ctx.fillRect(0, 0, width, height);
+    const drawGridFallback = () => {
+      // Clear canvas
+      ctx.fillStyle = "#1a1a1a";
+      ctx.fillRect(0, 0, width, height);
 
-    // Draw grid
-    ctx.strokeStyle = "#2a2a2a";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 50) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 50) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
-
-    // Draw sensors
-    const sensors = areaData.sensors || {};
-    Object.entries(sensors).forEach(([sensorZone, sensor]: [string, any]) => {
-      const isActive = sensorZone === zoneNumber;
-      const x = sensor.positionX;
-      const y = sensor.positionY;
-
-      // Draw sensor circle
-      ctx.beginPath();
-      ctx.arc(x, y, isActive ? 20 : 15, 0, 2 * Math.PI);
-      
-      if (isActive) {
-        // Highlight active sensor with pulsing effect
-        ctx.fillStyle = getPriorityColor(priority);
-        ctx.fill();
-        
-        // Outer glow
-        ctx.strokeStyle = getPriorityColor(priority);
-        ctx.lineWidth = 3;
-        ctx.stroke();
-        
-        // Draw larger circle for emphasis
+      // Draw grid
+      ctx.strokeStyle = "#2a2a2a";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 50) {
         ctx.beginPath();
-        ctx.arc(x, y, 35, 0, 2 * Math.PI);
-        ctx.strokeStyle = getPriorityColor(priority);
-        ctx.lineWidth = 2;
-        ctx.globalAlpha = 0.3;
-        ctx.stroke();
-        ctx.globalAlpha = 1;
-      } else {
-        // Normal sensor
-        ctx.fillStyle = sensor.color || "#6b7280";
-        ctx.fill();
-        ctx.strokeStyle = "#ffffff";
-        ctx.lineWidth = 2;
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
         ctx.stroke();
       }
+      for (let y = 0; y < height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    };
 
-      // Draw sensor label
-      ctx.fillStyle = "#ffffff";
-      ctx.font = isActive ? "bold 14px sans-serif" : "12px sans-serif";
-      ctx.textAlign = "center";
-      ctx.fillText(sensor.name, x, y - 30);
+    const drawSensors = () => {
+      // Draw sensors
+      const sensors = areaData.sensors || {};
+      Object.entries(sensors).forEach(([sensorZone, sensor]: [string, any]) => {
+        const isActive = sensorZone === zoneNumber;
+        const x = sensor.positionX;
+        const y = sensor.positionY;
+
+        // Draw sensor circle
+        ctx.beginPath();
+        ctx.arc(x, y, isActive ? 20 : 15, 0, 2 * Math.PI);
+        
+        if (isActive) {
+          // Highlight active sensor with pulsing effect
+          ctx.fillStyle = getPriorityColor(priority);
+          ctx.fill();
+          
+          // Outer glow
+          ctx.strokeStyle = getPriorityColor(priority);
+          ctx.lineWidth = 3;
+          ctx.stroke();
+          
+          // Draw larger circle for emphasis
+          ctx.beginPath();
+          ctx.arc(x, y, 35, 0, 2 * Math.PI);
+          ctx.strokeStyle = getPriorityColor(priority);
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = 0.3;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
+        } else {
+          // Normal sensor
+          ctx.fillStyle = sensor.color || "#6b7280";
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+
+        // Draw sensor label
+        ctx.fillStyle = "#ffffff";
+        ctx.font = isActive ? "bold 14px sans-serif" : "12px sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText(sensor.name, x, y - 30);
+        
+        // Draw zone number
+        ctx.font = "10px sans-serif";
+        ctx.fillStyle = "#9ca3af";
+        ctx.fillText(`Zone ${sensorZone}`, x, y - 15);
+      });
+    };
+
+    // Check if floor plan URL exists and is valid
+    if (!areaData.floorPlanUrl || areaData.floorPlanUrl === "") {
+      console.log("AreaFloorPlanView: No floor plan URL configured, using grid fallback.");
+      drawGridFallback();
+      drawSensors();
+      return;
+    }
+
+    // Load and draw floor plan image
+    const img = new Image();
+    img.src = areaData.floorPlanUrl;
+    console.log("AreaFloorPlanView: Attempting to load floor plan from:", areaData.floorPlanUrl);
+    
+    img.onload = () => {
+      console.log("AreaFloorPlanView: Floor plan image loaded successfully.");
+      // Draw the floor plan image with reduced opacity for better sensor visibility
+      ctx.globalAlpha = 0.5;
+      ctx.drawImage(img, 0, 0, width, height);
+      ctx.globalAlpha = 1.0;
       
-      // Draw zone number
-      ctx.font = "10px sans-serif";
-      ctx.fillStyle = "#9ca3af";
-      ctx.fillText(`Zone ${sensorZone}`, x, y - 15);
-    });
+      // Draw sensors on top of the image
+      drawSensors();
+    };
+    
+    img.onerror = () => {
+      console.log("AreaFloorPlanView: Floor plan image failed to load from:", areaData);
+      // If image fails to load, draw grid as fallback
+      drawGridFallback();
+      drawSensors();
+    };
 
-  }, [areaData, zoneNumber, priority]);
+  }, [areaData, zoneNumber, priority, dbFloor, dbSensors]);
 
   if (!areaData) {
     return (
@@ -167,7 +268,7 @@ export function AreaFloorPlanView({
               : "Missing account or area information"}
           </p>
           <p className="text-sm text-gray-500 mt-2">
-            Configure area mapping in <code>area-mapping.json</code>
+            Admins can configure floor plans in the <strong>Site Map Setup</strong> page.
           </p>
         </CardContent>
       </Card>
@@ -240,50 +341,73 @@ export function AreaFloorPlanView({
         </Card>
       )}
 
-      {/* All Sensors List */}
+      {/* All Alerts in Area */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-md">All Sensors in Area</CardTitle>
+          <CardTitle className="text-md">All Alerts in Area</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {Object.entries(sensors).map(([sensorZone, sensor]: [string, any]) => {
-              const IconComponent = getIconComponent(sensor.icon);
-              const isActive = sensorZone === zoneNumber;
-              
-              return (
-                <div
-                  key={sensorZone}
-                  className={`flex items-center gap-3 p-3 rounded-lg border ${
-                    isActive 
-                      ? "bg-red-500/10 border-red-500/30" 
-                      : "bg-muted border"
-                  }`}
-                >
-                  <div 
-                    className="p-2 rounded-full"
-                    style={{ 
-                      backgroundColor: isActive 
-                        ? `${getPriorityColor(priority)}20` 
-                        : `${sensor.color}20`,
-                      color: isActive ? getPriorityColor(priority) : sensor.color
-                    }}
+          {areaAlerts.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              No alerts in this area
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {areaAlerts.map((alert) => {
+                const isCurrentAlert = alert.zoneNumber === zoneNumber;
+                const alertPriority = alert.priority || "low";
+                
+                return (
+                  <div
+                    key={alert._id}
+                    className={`flex items-center gap-3 p-3 rounded-lg border ${
+                      isCurrentAlert 
+                        ? "bg-red-500/10 border-red-500/30" 
+                        : "bg-muted border"
+                    }`}
                   >
-                    <IconComponent className="w-4 h-4" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{sensor.name}</span>
-                      {isActive && (
-                        <Badge variant="destructive" className="text-xs">Active Alert</Badge>
-                      )}
+                    <div 
+                      className="p-2 rounded-full"
+                      style={{ 
+                        backgroundColor: `${getPriorityColor(alertPriority)}20`,
+                        color: getPriorityColor(alertPriority)
+                      }}
+                    >
+                      <AlertCircle className="w-4 h-4" />
                     </div>
-                    <p className="text-sm text-muted-foreground">Zone {sensorZone} • {sensor.type}</p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">
+                          {alert.eventDescription || "Security Alert"}
+                        </span>
+                        {isCurrentAlert && (
+                          <Badge variant="destructive" className="text-xs">Current Alert</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Zone {alert.zoneNumber || "N/A"} • {alert.eventCode || "Unknown"} • {new Date(alert.receivedAt).toLocaleString()}
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge 
+                          className="text-xs"
+                          style={{
+                            backgroundColor: `${getPriorityColor(alertPriority)}20`,
+                            color: getPriorityColor(alertPriority),
+                            border: `1px solid ${getPriorityColor(alertPriority)}40`
+                          }}
+                        >
+                          {alertPriority.toUpperCase()}
+                        </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {alert.status || "unassigned"}
+                        </Badge>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

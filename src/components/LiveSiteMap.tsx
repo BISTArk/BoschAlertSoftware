@@ -50,7 +50,7 @@ export function LiveSiteMap({ floorId, highlightAlertId }: LiveSiteMapProps) {
     ctx.fillStyle = "#1a1a1a";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Draw floor plan if available
+    // Draw area plan if available
     if (floor.floorPlanUrl) {
       const img = new Image();
       img.onload = () => {
@@ -220,7 +220,7 @@ export function LiveSiteMap({ floorId, highlightAlertId }: LiveSiteMapProps) {
   };
 
   if (!floor) {
-    return <div className="text-center p-8">Loading floor plan...</div>;
+    return <div className="text-center p-8">Loading area plan...</div>;
   }
 
   return (

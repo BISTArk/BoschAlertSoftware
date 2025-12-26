@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-// Import location mapping
+// Import location mapping (account-level coordinates only)
 import locationMapping from "../../location-mapping.json";
 
 // Fix Leaflet's default icon issue with Vite
@@ -26,21 +26,6 @@ interface AreaMapViewProps {
   }>;
 }
 
-// Helper to get zone coordinates from location mapping
-const getZoneCoordinates = (accountNumber?: string, eventCode?: string, zoneNumber?: string) => {
-  if (!accountNumber || !zoneNumber) return null;
-  
-  const account = locationMapping.accounts[accountNumber as keyof typeof locationMapping.accounts];
-  if (!account) return null;
-  
-  // Look up zone by zone number only (e.g., "0008", "0005", "0001")
-  const zones = account.zones as Record<string, { coordinates: { lat: number; lng: number } }>;
-  const zone = zones[zoneNumber];
-  if (!zone) return null;
-  
-  return zone.coordinates;
-};
-
 // Get priority color
 const getPriorityColor = (priority?: "critical" | "high" | "medium" | "low"): string => {
   switch (priority) {
@@ -50,6 +35,15 @@ const getPriorityColor = (priority?: "critical" | "high" | "medium" | "low"): st
     case "low": return "#3b82f6"; // blue
     default: return "#6b7280"; // gray
   }
+};
+
+// Get highest priority from a list of alerts
+const getHighestPriority = (alerts: Array<{ priority?: string }>): "critical" | "high" | "medium" | "low" => {
+  const priorities = alerts.map(a => a.priority).filter(Boolean);
+  if (priorities.includes("critical")) return "critical";
+  if (priorities.includes("high")) return "high";
+  if (priorities.includes("medium")) return "medium";
+  return "low";
 };
 
 export function AreaMapView({ alerts }: AreaMapViewProps) {
@@ -72,11 +66,14 @@ export function AreaMapView({ alerts }: AreaMapViewProps) {
   useEffect(() => {
     // Update map when alerts change
     if (mapRef.current) {
-      // Fit bounds to show all markers with alerts
-      const bounds: L.LatLngBoundsExpression = alerts
-        .map(alert => getZoneCoordinates(alert.accountNumber, alert.eventCode, alert.zoneNumber))
-        .filter((coords): coords is { lat: number; lng: number } => coords !== null)
-        .map(coords => [coords.lat, coords.lng] as [number, number]);
+      // Fit bounds to show all accounts with alerts
+      const accountsWithAlerts = new Set(alerts.map(a => a.accountNumber).filter(Boolean));
+      const bounds: L.LatLngBoundsExpression = Array.from(accountsWithAlerts)
+        .map(accountNumber => {
+          const account = locationMapping.accounts[accountNumber as keyof typeof locationMapping.accounts];
+          return account ? [account.coordinates.lat, account.coordinates.lng] as [number, number] : null;
+        })
+        .filter((coords): coords is [number, number] => coords !== null);
 
       if (bounds.length > 0) {
         mapRef.current.fitBounds(bounds, { padding: [50, 50] });
@@ -97,67 +94,72 @@ export function AreaMapView({ alerts }: AreaMapViewProps) {
           url={locationMapping.mapSettings.tileLayer}
         />
 
-        {/* Show all zone markers from location mapping */}
-        {Object.entries(locationMapping.accounts).map(([accountNumber, account]) =>
-          Object.entries(account.zones).map(([zoneId, zone]) => {
-            // Check if there are active alerts for this zone
-            // Match by zone number only (zones are now keyed by zone number, not eventCode+zoneNumber)
-            const zoneAlerts = alerts.filter(a => {
-              if (a.accountNumber !== accountNumber) return false;
-              
-              // Match by zone number only (e.g., "0008")
-              return a.zoneNumber === zoneId;
-            });
-            
-            const hasAlert = zoneAlerts.length > 0;
-            const priority = zoneAlerts[0]?.priority || "low";
+        {/* Show all account markers from location mapping */}
+        {Object.entries(locationMapping.accounts).map(([accountNumber, account]) => {
+          // Get all alerts for this account
+          const accountAlerts = alerts.filter(a => a.accountNumber === accountNumber);
+          const activeAlerts = accountAlerts.filter(a => a.status !== "resolved");
+          const hasActiveAlert = activeAlerts.length > 0;
+          const priority = hasActiveAlert ? getHighestPriority(activeAlerts) : "low";
 
-            return (
-              <div key={`${accountNumber}-${zoneId}`}>
-                {/* Zone marker */}
-                <Marker position={[zone.coordinates.lat, zone.coordinates.lng]}>
-                  <Popup>
-                    <div className="text-sm">
-                      <div className="font-bold">{zone.name}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        Account: {accountNumber} • Zone: {zoneId}
-                      </div>
-                      <div className="text-xs mt-1">{zone.location}</div>
-                      <div className="text-xs text-muted-foreground mt-1">
-                        {zone.description}
-                      </div>
-                      {hasAlert && (
-                        <div className="mt-2 pt-2 border-t">
-                          <div className="font-semibold text-red-600">⚠️ ACTIVE ALERT</div>
-                          {zoneAlerts.map(alert => (
-                            <div key={alert._id} className="text-xs mt-1">
-                              {alert.eventDescription}
-                            </div>
-                          ))}
-                        </div>
-                      )}
+          return (
+            <div key={accountNumber}>
+              {/* Account marker */}
+              <Marker position={[account.coordinates.lat, account.coordinates.lng]}>
+                <Popup>
+                  <div className="text-sm">
+                    <div className="font-bold">{account.name}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Account: {accountNumber}
                     </div>
-                  </Popup>
-                </Marker>
+                    <div className="text-xs mt-1">{account.address}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {account.description}
+                    </div>
+                    {hasActiveAlert && (
+                      <div className="mt-2 pt-2 border-t">
+                        <div className="font-semibold text-red-600">
+                          ⚠️ {activeAlerts.length} ACTIVE ALERT{activeAlerts.length > 1 ? 'S' : ''}
+                        </div>
+                        {activeAlerts.slice(0, 5).map(alert => (
+                          <div key={alert._id} className="text-xs mt-1">
+                            <span className="font-mono">{alert.eventCode}</span> - {alert.eventDescription}
+                            {alert.zoneNumber && <span className="text-muted-foreground"> (Zone {alert.zoneNumber})</span>}
+                          </div>
+                        ))}
+                        {activeAlerts.length > 5 && (
+                          <div className="text-xs text-muted-foreground mt-1">
+                            +{activeAlerts.length - 5} more...
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {!hasActiveAlert && accountAlerts.length > 0 && (
+                      <div className="mt-2 pt-2 border-t text-xs text-muted-foreground">
+                        All alerts resolved
+                      </div>
+                    )}
+                  </div>
+                </Popup>
+              </Marker>
 
-                {/* Pulsing circle for active alerts */}
-                {hasAlert && (
-                  <Circle
-                    center={[zone.coordinates.lat, zone.coordinates.lng]}
-                    radius={100}
-                    pathOptions={{
-                      color: getPriorityColor(priority),
-                      fillColor: getPriorityColor(priority),
-                      fillOpacity: 0.4,
-                      weight: 2,
-                      className: "animate-pulse"
-                    }}
-                  />
-                )}
-              </div>
-            );
-          })
-        )}
+              {/* Pulsing circle for active alerts */}
+              {hasActiveAlert && (
+                <Circle
+                  center={[account.coordinates.lat, account.coordinates.lng]}
+                  radius={500}
+                  pathOptions={{
+                    color: getPriorityColor(priority),
+                    fillColor: getPriorityColor(priority),
+                    fillOpacity: 0.3,
+                    weight: 2,
+                    className: "animate-pulse"
+                  }}
+                />
+              )}
+            </div>
+          );
+        })}
       </MapContainer>
 
       {/* Legend */}

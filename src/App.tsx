@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom"
 import { DashboardNew } from "@/components/DashboardNew"
 import { AlertsTable } from "@/components/alerts-table"
 import { AlertDetailView } from "@/components/AlertDetailView"
@@ -9,16 +10,27 @@ import { Sidebar } from "@/components/Sidebar"
 import { TopHeader } from "@/components/TopHeader"
 import { GuardAvailabilityToggle } from "@/components/GuardAvailabilityToggle"
 import { TestAlertGenerator } from "@/components/TestAlertGenerator"
+import { Documentation } from "@/components/Documentation"
 import { useAuth } from "@/contexts/AuthContext"
 import type { Id } from "../convex/_generated/dataModel"
 
 function App() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentView, setCurrentView] = useState<string>("dashboard");
   const [selectedAlertId, setSelectedAlertId] = useState<Id<"alerts"> | null>(null);
 
-  if (!user) {
+  // Check if we're on the docs route
+  const isDocsRoute = location.pathname === '/docs';
+
+  if (!user && !isDocsRoute) {
     return <Login />;
+  }
+
+  // If on docs route, show documentation without requiring login
+  if (isDocsRoute) {
+    return <Documentation onBack={user ? () => navigate('/') : undefined} />;
   }
 
   const renderContent = () => {
@@ -34,7 +46,7 @@ function App() {
         }
         return (
           <>
-            {user.role === "guard" && <GuardAvailabilityToggle />}
+            {user?.role === "guard" && <GuardAvailabilityToggle />}
             <DashboardNew onAlertClick={(id) => setSelectedAlertId(id)} />
           </>
         );
@@ -49,7 +61,7 @@ function App() {
         }
         return (
           <>
-            {user.role === "guard" && <GuardAvailabilityToggle />}
+            {user?.role === "guard" && <GuardAvailabilityToggle />}
             <div className="mb-6">
               <h2 className="text-2xl font-bold mb-2">All Security Alerts</h2>
               <p className="text-sm text-muted-foreground">

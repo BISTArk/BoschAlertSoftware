@@ -1,7 +1,7 @@
 /**
  * SIA DC-09 Message Receiver Server
  * Listens for SIA DC-09 protocol messages via TCP
- * Parses messages from Bosch security panels and stores them in Convex
+ * Parses messages from security panels and stores them in Convex
  * 
  * Protocol Format: [#AccountNumber|ReceiverId/EventCode/AreaInfo]
  * Examples:

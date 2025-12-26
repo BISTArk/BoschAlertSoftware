@@ -30,12 +30,21 @@ async function clearAllAlerts() {
   console.log("\n🗑️  Deleting all alerts...");
   
   try {
-    const { stdout, stderr } = await execAsync("npx convex run migration:clearAllAlerts --prod");
+    const { stdout, stderr } = await execAsync("npx convex run migration:clearAllAlerts");
     console.log(stdout);
-    if (stderr) console.error(stderr);
+    if (stderr && !stderr.includes("Assertion failed")) {
+      console.error(stderr);
+    }
     console.log("✅ All alerts deleted successfully!\n");
-  } catch (error) {
-    console.error("❌ Error:", error);
+  } catch (error: any) {
+    // Check if operation succeeded despite Node.js cleanup error
+    if (error.stdout && error.stdout.includes("deleted")) {
+      console.log(error.stdout);
+      console.log("✅ All alerts deleted successfully!\n");
+      console.log("ℹ️  (Ignoring Node.js cleanup error on Windows)\n");
+    } else {
+      console.error("❌ Error:", error.message || error);
+    }
   }
 }
 

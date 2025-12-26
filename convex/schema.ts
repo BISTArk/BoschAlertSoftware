@@ -36,7 +36,6 @@ export default defineSchema({
     siteId: v.id("sites"), // Links to account (site)
     areaNumber: v.string(), // SIA DC-09 area number (e.g., "01", "02") - extracted from receiverId
     name: v.string(), // e.g., "Area 01 - Ground Floor", "Area 02 - First Floor"
-    floorNumber: v.number(), // Numeric ordering for display
     floorPlanUrl: v.optional(v.string()), // URL to uploaded floor plan image
     floorPlanStorageId: v.optional(v.string()), // Convex storage ID
     width: v.number(), // Floor plan dimensions for coordinate system
@@ -44,7 +43,6 @@ export default defineSchema({
     active: v.boolean(),
     createdAt: v.number(),
   }).index("by_site", ["siteId"])
-    .index("by_site_and_floor", ["siteId", "floorNumber"])
     .index("by_site_and_area", ["siteId", "areaNumber"]),
 
   // SENSORS/POINTS/ZONES - Represents individual sensors within an area

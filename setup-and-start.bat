@@ -1,10 +1,10 @@
 @echo off
-REM Full setup and start for Bosch Alert Hub
+REM Full setup and start for AISAC
 REM This script installs dependencies, seeds the database, and starts all services
 
 echo.
 echo ========================================
-echo   Bosch Alert Hub - Full Setup
+echo   AISAC - Full Setup
 echo ========================================
 echo.
 

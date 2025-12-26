@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start all Bosch Alert Hub services
+# Start all AISAC services
 # This script launches Convex, Vite, and the SIA receiver in separate terminals
 
 echo "🚀 Starting Bosch Alert Hub..."

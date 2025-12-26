@@ -45,7 +45,7 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Bosch Alert Hub</CardTitle>
+          <CardTitle>AISAC - AI-led Sensors and Control</CardTitle>
           <CardDescription>Sign in to access the alert monitoring system</CardDescription>
         </CardHeader>
         <CardContent>

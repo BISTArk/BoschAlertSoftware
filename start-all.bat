@@ -1,10 +1,10 @@
 @echo off
-REM Start all Bosch Alert Hub services
+REM Start all AISAC services
 REM This script launches Convex, Vite, and the SIA receiver in separate windows
 
 echo.
 echo ====================================
-echo    Bosch Alert Hub Startup
+echo    AISAC Startup
 echo ====================================
 echo.
 echo Starting services:

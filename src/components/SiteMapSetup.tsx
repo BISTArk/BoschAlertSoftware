@@ -60,22 +60,25 @@ export function SiteMapSetup() {
   const [siteName, setSiteName] = useState("");
   const [siteDescription, setSiteDescription] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
+  const [siteAccount, setSiteAccount] = useState("");
 
   const [floorName, setFloorName] = useState("");
-  const [floorNumber, setFloorNumber] = useState("");
+  const [floorAccount, setFloorAccount] = useState("");
+  const [floorArea, setFloorArea] = useState("");
   const [floorWidth, setFloorWidth] = useState("1200");
   const [floorHeight, setFloorHeight] = useState("800");
   const [floorPlanUrl, setFloorPlanUrl] = useState("");
 
   const [sensorName, setSensorName] = useState("");
   const [sensorAccount, setSensorAccount] = useState("");
+  const [sensorArea, setSensorArea] = useState("");
   const [sensorType, setSensorType] = useState("door");
   const [sensorZone, setSensorZone] = useState("");
   const [sensorX, setSensorX] = useState("100");
   const [sensorY, setSensorY] = useState("100");
 
   const handleSaveSite = async () => {
-    if (!siteName) return;
+    if (!siteName || !siteAccount) return;
 
     if (editingSite) {
       await updateSite({
@@ -87,6 +90,7 @@ export function SiteMapSetup() {
     } else {
       if (!user) return;
       await createSite({
+        accountNumber: siteAccount,
         name: siteName,
         description: siteDescription || undefined,
         address: siteAddress || undefined,
@@ -97,6 +101,7 @@ export function SiteMapSetup() {
     setSiteName("");
     setSiteDescription("");
     setSiteAddress("");
+    setSiteAccount("");
     setEditingSite(null);
     setShowSiteDialog(false);
   };
@@ -106,17 +111,17 @@ export function SiteMapSetup() {
     setSiteName(site.name);
     setSiteDescription(site.description || "");
     setSiteAddress(site.address || "");
+    setSiteAccount(site.accountNumber || "");
     setShowSiteDialog(true);
   };
 
   const handleSaveFloor = async () => {
-    if (!floorName) return;
+    if (!floorName || !floorArea) return;
 
     if (editingFloor) {
       await updateFloor({
         floorId: editingFloor,
         name: floorName,
-        floorNumber: parseInt(floorNumber) || 0,
         width: parseInt(floorWidth) || 1200,
         height: parseInt(floorHeight) || 800,
         floorPlanUrl: floorPlanUrl || undefined,
@@ -125,8 +130,8 @@ export function SiteMapSetup() {
       if (!selectedSite) return;
       await createFloor({
         siteId: selectedSite,
+        areaNumber: floorArea,
         name: floorName,
-        floorNumber: parseInt(floorNumber) || 0,
         width: parseInt(floorWidth) || 1200,
         height: parseInt(floorHeight) || 800,
         floorPlanUrl: floorPlanUrl || undefined,
@@ -134,7 +139,8 @@ export function SiteMapSetup() {
     }
 
     setFloorName("");
-    setFloorNumber("");
+    setFloorAccount("");
+    setFloorArea("");
     setFloorPlanUrl("");
     setEditingFloor(null);
     setShowFloorDialog(false);
@@ -143,7 +149,6 @@ export function SiteMapSetup() {
   const handleEditFloor = (floor: any) => {
     setEditingFloor(floor._id);
     setFloorName(floor.name);
-    setFloorNumber(floor.floorNumber.toString());
     setFloorWidth(floor.width.toString());
     setFloorHeight(floor.height.toString());
     setFloorPlanUrl(floor.floorPlanUrl || "");
@@ -169,7 +174,7 @@ export function SiteMapSetup() {
         accountNumber: sensorAccount,
         name: sensorName,
         type: sensorType,
-        zone: sensorZone || undefined,
+        zone: sensorZone || "",
         positionX: parseInt(sensorX) || 0,
         positionY: parseInt(sensorY) || 0,
       });
@@ -177,6 +182,7 @@ export function SiteMapSetup() {
 
     setSensorName("");
     setSensorAccount("");
+    setSensorArea("");
     setSensorZone("");
     setSensorX("100");
     setSensorY("100");
@@ -188,6 +194,7 @@ export function SiteMapSetup() {
     setEditingSensor(sensor._id);
     setSensorName(sensor.name);
     setSensorAccount(sensor.accountNumber);
+    setSensorArea(sensor.areaNumber || "");
     setSensorType(sensor.type);
     setSensorZone(sensor.zone || "");
     setSensorX(sensor.positionX.toString());
@@ -252,6 +259,9 @@ export function SiteMapSetup() {
                     }}
                   >
                     <div className="font-medium">{site.name}</div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      Account: {site.accountNumber || "N/A"}
+                    </div>
                     {site.address && <div className="text-xs text-muted-foreground">{site.address}</div>}
                   </div>
                   <Button
@@ -274,10 +284,10 @@ export function SiteMapSetup() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Layers className="h-5 w-5" />
-              Floors
+              Areas
             </CardTitle>
             <CardDescription>
-              {selectedSite ? "Manage floors" : "Select a site first"}
+              {selectedSite ? "Manage areas" : "Select a site first"}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -287,7 +297,7 @@ export function SiteMapSetup() {
               disabled={!selectedSite}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add Floor
+              Add Area
             </Button>
 
             <div className="space-y-2">
@@ -353,10 +363,10 @@ export function SiteMapSetup() {
                 >
                   <div className="font-medium">{sensor.name}</div>
                   <div className="text-xs text-muted-foreground">
-                    Account: {sensor.accountNumber}
+                    Account: {sensor.accountNumber} • Area: {floors?.find(f => f._id === selectedFloor)?.areaNumber || "N/A"}
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    Type: {sensor.type} | Position: ({sensor.positionX}, {sensor.positionY})
+                    Zone: {sensor.zone || "N/A"} | Type: {sensor.type} | Position: ({sensor.positionX}, {sensor.positionY})
                   </div>
                   <div className="flex gap-2 mt-2">
                     <Button
@@ -392,6 +402,7 @@ export function SiteMapSetup() {
           setSiteName("");
           setSiteDescription("");
           setSiteAddress("");
+          setSiteAccount("");
         }
       }}>
         <DialogContent>
@@ -410,6 +421,16 @@ export function SiteMapSetup() {
                 value={siteName}
                 onChange={(e) => setSiteName(e.target.value)}
                 placeholder="e.g., Headquarters, Building A"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="siteAccount">Account Number *</Label>
+              <Input
+                id="siteAccount"
+                value={siteAccount}
+                onChange={(e) => setSiteAccount(e.target.value)}
+                placeholder="e.g., 3333"
               />
             </div>
 
@@ -444,10 +465,11 @@ export function SiteMapSetup() {
               setSiteName("");
               setSiteDescription("");
               setSiteAddress("");
+              setSiteAccount("");
             }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSite} disabled={!siteName}>
+            <Button onClick={handleSaveSite} disabled={!siteName || !siteAccount}>
               {editingSite ? "Update Site" : "Create Site"}
             </Button>
           </DialogFooter>
@@ -457,10 +479,18 @@ export function SiteMapSetup() {
       {/* Create Floor Dialog */}
       <Dialog open={showFloorDialog} onOpenChange={(open) => {
         setShowFloorDialog(open);
+        if (open && selectedSite && !editingFloor) {
+          // Pre-fill account number from selected site
+          const site = sites?.find(s => s._id === selectedSite);
+          if (site) {
+            setFloorAccount(site.accountNumber);
+          }
+        }
         if (!open) {
           setEditingFloor(null);
           setFloorName("");
-          setFloorNumber("");
+          setFloorAccount("");
+          setFloorArea("");
           setFloorWidth("1200");
           setFloorHeight("800");
           setFloorPlanUrl("");
@@ -468,32 +498,44 @@ export function SiteMapSetup() {
       }}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{editingFloor ? "Edit Floor" : "Add New Floor"}</DialogTitle>
+            <DialogTitle>{editingFloor ? "Edit Area" : "Add New Area"}</DialogTitle>
             <DialogDescription>
-              {editingFloor ? "Update floor information" : "Add a floor to the selected site"}
+              {editingFloor ? "Update area information" : "Add an area to the selected site"}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="floorName">Floor Name *</Label>
+              <Label htmlFor="floorName">Area Name *</Label>
               <Input
                 id="floorName"
                 value={floorName}
                 onChange={(e) => setFloorName(e.target.value)}
-                placeholder="e.g., Ground Floor, Floor 2"
+                placeholder="e.g., Ground Floor, Area 2"
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="floorNumber">Floor Number *</Label>
-              <Input
-                id="floorNumber"
-                type="number"
-                value={floorNumber}
-                onChange={(e) => setFloorNumber(e.target.value)}
-                placeholder="0"
-              />
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="floorAccount">Account Number</Label>
+                <Input
+                  id="floorAccount"
+                  value={floorAccount}
+                  onChange={(e) => setFloorAccount(e.target.value)}
+                  placeholder="e.g., 3333"
+                  disabled
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="floorArea">Area Number *</Label>
+                <Input
+                  id="floorArea"
+                  value={floorArea}
+                  onChange={(e) => setFloorArea(e.target.value)}
+                  placeholder="e.g., 01"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -519,7 +561,7 @@ export function SiteMapSetup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="floorPlanUrl">Floor Plan Image URL</Label>
+              <Label htmlFor="floorPlanUrl">Area Plan Image URL</Label>
               <Input
                 id="floorPlanUrl"
                 type="url"
@@ -528,7 +570,7 @@ export function SiteMapSetup() {
                 placeholder="https://example.com/floorplan.png"
               />
               <p className="text-xs text-muted-foreground">
-                Enter a publicly accessible image URL for the floor plan background
+                Enter a publicly accessible image URL for the area plan background
               </p>
             </div>
           </div>
@@ -538,7 +580,8 @@ export function SiteMapSetup() {
               setShowFloorDialog(false);
               setEditingFloor(null);
               setFloorName("");
-              setFloorNumber("");
+              setFloorAccount("");
+              setFloorArea("");
               setFloorWidth("1200");
               setFloorHeight("800");
               setFloorPlanUrl("");
@@ -555,10 +598,22 @@ export function SiteMapSetup() {
       {/* Create Sensor Dialog */}
       <Dialog open={showSensorDialog} onOpenChange={(open) => {
         setShowSensorDialog(open);
+        if (open && selectedFloor && !editingSensor) {
+          // Pre-fill account and area numbers
+          const floor = floors?.find(f => f._id === selectedFloor);
+          if (floor) {
+            const site = sites?.find(s => s._id === floor.siteId);
+            if (site) {
+              setSensorAccount(site.accountNumber);
+              setSensorArea(floor.areaNumber);
+            }
+          }
+        }
         if (!open) {
           setEditingSensor(null);
           setSensorName("");
           setSensorAccount("");
+          setSensorArea("");
           setSensorType("door");
           setSensorZone("");
           setSensorX("100");
@@ -569,7 +624,7 @@ export function SiteMapSetup() {
           <DialogHeader>
             <DialogTitle>{editingSensor ? "Edit Sensor" : "Add New Sensor"}</DialogTitle>
             <DialogDescription>
-              {editingSensor ? "Update sensor information" : "Place a sensor on the floor plan"}
+              {editingSensor ? "Update sensor information" : "Place a sensor on the area plan"}
             </DialogDescription>
           </DialogHeader>
 
@@ -584,19 +639,35 @@ export function SiteMapSetup() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sensorAccount">Account Number *</Label>
-              <Input
-                id="sensorAccount"
-                value={sensorAccount}
-                onChange={(e) => setSensorAccount(e.target.value)}
-                placeholder="e.g., 223010"
-                disabled={!!editingSensor}
-              />
-              {editingSensor && (
-                <p className="text-xs text-muted-foreground">Account number cannot be changed</p>
-              )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="sensorAccount">Account Number *</Label>
+                <Input
+                  id="sensorAccount"
+                  value={sensorAccount}
+                  onChange={(e) => setSensorAccount(e.target.value)}
+                  placeholder="e.g., 3333"
+                  disabled={!editingSensor}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="sensorArea">Area Number *</Label>
+                <Input
+                  id="sensorArea"
+                  value={sensorArea}
+                  onChange={(e) => setSensorArea(e.target.value)}
+                  placeholder="e.g., 01"
+                  disabled={!editingSensor}
+                />
+              </div>
             </div>
+            {!editingSensor && (
+              <p className="text-xs text-muted-foreground">Account and area numbers are pre-filled from the selected floor</p>
+            )}
+            {editingSensor && (
+              <p className="text-xs text-muted-foreground">Account and area numbers cannot be changed</p>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="sensorType">Sensor Type</Label>
@@ -656,6 +727,7 @@ export function SiteMapSetup() {
               setEditingSensor(null);
               setSensorName("");
               setSensorAccount("");
+              setSensorArea("");
               setSensorType("door");
               setSensorZone("");
               setSensorX("100");
@@ -663,7 +735,7 @@ export function SiteMapSetup() {
             }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSensor} disabled={!sensorName || !sensorAccount}>
+            <Button onClick={handleSaveSensor} disabled={!sensorName || !sensorAccount || !sensorArea}>
               {editingSensor ? "Update Sensor" : "Create Sensor"}
             </Button>
           </DialogFooter>

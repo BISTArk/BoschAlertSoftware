@@ -1,0 +1,516 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{geometry}
+\geometry{margin=1in}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{fancyhdr}
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    captionpos=b,
+    numbers=left,
+    numberstyle=\tiny,
+    frame=single,
+    backgroundcolor=\color{gray!10}
+}
+
+\overfullrule=0pt
+
+\title{AISAC Documentation}
+\author{AISAC Team}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Overview}
+
+\subsection{Welcome to AISAC}
+
+AISAC (AI-led Sensors and Control) is a comprehensive security alert management system designed to receive, process, and manage security alerts from security panels using the SIA DC-09 protocol. The system provides real-time monitoring, intelligent alert routing, and powerful analytics for security operations.
+
+\subsubsection{Key Capabilities}
+\begin{itemize}
+\item Real-time SIA DC-09 protocol message processing
+\item TCP/UDP server for receiving security panel alerts
+\item Multi-site and multi-area support
+\item Role-based access control (Guards, Heads, Admins)
+\item Interactive floor plans and site mapping
+\item Intelligent alert assignment and escalation
+\end{itemize}
+
+\subsubsection{System Architecture}
+\begin{itemize}
+\item React + Vite + TypeScript
+\item Convex (Real-time database)
+\item Node.js TCP/UDP server
+\item SIA DC-09 (DC-09-1998.10)
+\item Tailwind CSS + shadcn/ui
+\end{itemize}
+
+\section{Getting Started}
+
+\subsection{System Requirements}
+
+\subsubsection{Prerequisites}
+\begin{itemize}
+\item Node.js 18.x or higher (for backend and Convex)
+\item Modern web browser (Chrome, Firefox, Edge, Safari)
+\item Windows server (x64)
+\item Open ports for SIA receiver (default: 7800) and web server (default: 3000)
+\end{itemize}
+
+\subsubsection{Hardware Requirements}
+\begin{itemize}
+\item \textbf{CPU:} Dual-core processor or better
+\item \textbf{RAM:} 4GB minimum (8GB recommended)
+\item \textbf{Storage:} 2GB available disk space
+\item \textbf{Network:} Stable LAN connection
+\end{itemize}
+
+\subsection{On-Premises Installation \& Setup}
+
+How to deploy AISAC for on-premises use.
+
+\subsubsection{Step 1: Extract the Deployment Package}
+\begin{itemize}
+\item Extract the provided ZIP file containing all necessary files to your server.
+\item The package includes the frontend build, backend code, and startup scripts.
+\end{itemize}
+
+\subsubsection{Step 2: Start the Backend Services}
+Double-click the \texttt{start-backend.bat} file to start the Convex backend and SIA receiver:
+
+\begin{lstlisting}[language=bash]
+@echo off
+REM Start Convex backend
+start /B npx convex dev --no-interactive
+REM Wait for Convex to start (adjust timeout as needed)
+PING 127.0.0.1 -n 6 >NUL
+REM Start SIA receiver
+start /B node server\server.js
+echo AISAC backend and SIA receiver started.
+pause
+\end{lstlisting}
+
+This will run in the background. A command prompt window will appear briefly and then close.
+
+\subsubsection{Step 3: Start the Frontend}
+Double-click the \texttt{start-frontend.bat} file to start the web server:
+
+\begin{lstlisting}[language=bash]
+@echo off
+REM Start frontend web server
+npx serve dist -s -l 3000
+pause
+\end{lstlisting}
+
+This will start a local web server on port 3000. Open your browser and navigate to \texttt{http://localhost:3000}
+
+\subsubsection{Step 4: Access the Application}
+\begin{itemize}
+\item Open your web browser and go to \texttt{http://localhost:3000}
+\item Log in using the default credentials provided below.
+\end{itemize}
+
+\subsubsection{Step 5: (Optional) Seed Initial Data}
+\begin{itemize}
+\item If you need demo data, run the provided seed scripts by double-clicking \texttt{seed-data.bat}
+\item Default user accounts are listed below.
+\end{itemize}
+
+\subsection{Default User Accounts}
+
+Use these credentials to log in after setup.
+
+\textbf{Note:} These are demo user accounts provided for testing and demonstration purposes.
+
+\subsubsection{Admin Account}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Username} & admin \\
+\textbf{Password} & admin123 \\
+\hline
+\end{tabular}
+
+\subsubsection{Head Account}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Username} & head1 \\
+\textbf{Password} & head123 \\
+\hline
+\end{tabular}
+
+\subsubsection{Guard Accounts}
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Username} & guard1 \\
+\textbf{Password} & guard123 \\
+\hline
+\textbf{Username} & guard2 \\
+\textbf{Password} & guard123 \\
+\hline
+\end{tabular}
+
+\section{Sensor Setup}
+
+Setting up sensors and floor plans.
+
+\subsection{Understanding the Hierarchy}
+\begin{itemize}
+\item \textbf{Sites (Accounts):} Top-level customer locations, identified by account number (e.g., "3333")
+\item \textbf{Areas (Floors/Partitions):} Sub-divisions within a site, identified by area number (e.g., "01", "02")
+\item \textbf{Sensors (Zones/Points):} Individual detection devices, identified by zone number (e.g., "0008")
+\end{itemize}
+
+\subsection{Creating a New Account}
+\begin{enumerate}
+\item \textbf{Navigate to Admin Panel:} Only available to Admin users
+\item \textbf{Add Account Information:} Enter account number, name, address, and description
+\item \textbf{Configure Areas:} Add areas/floors with area numbers matching your security panel configuration
+\item \textbf{Upload Floor Plans:} Upload image files (PNG, JPG) for each area
+\item \textbf{Place Sensors:} Click on floor plan to add sensors with correct zone numbers
+\end{enumerate}
+
+\subsection{Floor Plan Best Practices}
+\begin{itemize}
+\item Use high-resolution images (1920x1080 or higher recommended)
+\item Ensure floor plans are properly scaled and oriented
+\item Label sensor positions accurately to match physical installation
+\item Use consistent naming conventions for sensors (e.g., "Main Entrance Door", "Server Room Motion")
+\item Test sensor positioning by generating test alerts
+\end{itemize}
+
+\subsection{Sensor Configuration}
+
+\subsubsection{Required Fields:}
+\begin{itemize}
+\item \textbf{Name:} Descriptive name for the sensor
+\item \textbf{Type:} door, motion, fire, panic, camera, etc.
+\item \textbf{Zone Number:} Must match security panel configuration
+\item \textbf{Position:} X,Y coordinates on floor plan
+\end{itemize}
+
+\textbf{Important:} Zone numbers must exactly match your security panel configuration. Mismatched zone numbers will result in alerts not being linked to the correct sensors.
+
+\section{Features}
+
+Comprehensive security alert management capabilities.
+
+\subsection{Core Features}
+
+\subsubsection{Real-Time Alert Processing}
+\begin{itemize}
+\item Receives SIA DC-09 formatted messages via TCP/UDP
+\item Automatic event classification and prioritization
+\item Support for burglary, fire, panic, and access control events
+\item Real-time dashboard updates
+\item Alert status tracking (unassigned, assigned, in-progress, resolved)
+\end{itemize}
+
+\subsubsection{Role-Based Access Control}
+\begin{itemize}
+\item \textbf{Guard:} View assigned alerts, update status, respond to incidents
+\item \textbf{Head:} Assign alerts, monitor teams, view all sites
+\item \textbf{Admin:} Full system access, user management, configuration
+\item Multi-account access for cross-site monitoring
+\end{itemize}
+
+\subsubsection{Interactive Site Mapping}
+\begin{itemize}
+\item Upload and annotate floor plans
+\item Visual sensor placement on floor plans
+\item Real-time alert location visualization
+\item Multi-area/floor support per site
+\item Click sensors to view details and history
+\end{itemize}
+
+\subsubsection{Advanced Analytics}
+\begin{itemize}
+\item Alert trends and patterns over time
+\item Response time analytics
+\item Event category distribution
+\item Peak hours and hotspot analysis
+\item Guard performance metrics
+\end{itemize}
+
+\subsection{Alert Workflow Features}
+
+\subsubsection{Intelligent Assignment}
+Automatically or manually assign alerts to available guards based on priority, location, and workload.
+
+\subsubsection{Guard Availability Status}
+Guards can mark themselves as available/away. System prevents assignment to unavailable guards.
+
+\subsubsection{Response Actions}
+Predefined response actions: Lockdown, Dispatch, Investigate with guided workflows.
+
+\subsubsection{Notes and Documentation}
+Add detailed notes to each alert for audit trails and handover documentation.
+
+\section{User Guide}
+
+Role-specific guides for different user types.
+
+\subsection{Using AISAC by Role}
+
+\subsubsection{Guard User Guide}
+Guards are the front-line responders who handle assigned security alerts.
+
+\paragraph{1. Setting Your Availability}
+Use the availability toggle at the top of the dashboard to indicate if you're on duty.
+
+\paragraph{2. Viewing Assigned Alerts}
+Your dashboard shows alerts assigned to you.
+
+\paragraph{3. Responding to Alerts}
+Follow the guided workflow when responding.
+
+\paragraph{4. Using Floor Plans}
+Visual floor plans show sensor locations. Click on sensors to view their status and recent alerts.
+
+\subsubsection{Head User Guide}
+Heads supervise guards, assign alerts, and monitor overall security operations.
+
+\paragraph{1. Monitoring All Alerts}
+View all alerts across your assigned sites.
+
+\paragraph{2. Assigning Alerts}
+Assign alerts to available guards based on priority and location.
+
+\paragraph{3. Monitoring Performance}
+Track guard response times and resolution rates.
+
+\paragraph{4. Managing Teams}
+View team availability and workload distribution.
+
+\subsubsection{Admin User Guide}
+Admins have full system access for configuration, user management, and testing.
+
+\paragraph{1. System Configuration}
+Configure SIA receivers, database settings, and system parameters.
+
+\paragraph{2. User Management}
+Create, edit, and manage user accounts and permissions.
+
+\paragraph{3. Site and Sensor Setup}
+Configure sites, areas, sensors, and floor plans.
+
+\paragraph{4. Testing and Maintenance}
+Run system tests, view logs, and perform maintenance tasks.
+
+\section{Alert Management}
+
+Understanding Security Alerts - SIA DC-09 protocol event types and priorities.
+
+\subsection{Alert Priorities}
+
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Priority} & \textbf{Description} \\
+\hline
+Critical & Immediate response required. Includes fire alarms, panic buttons, hold-up alarms. \\
+\hline
+High & Urgent attention needed. Includes burglary alarms, forced entry, unauthorized access. \\
+\hline
+Medium & Requires attention soon. Includes access denied, late to close, supervision issues. \\
+\hline
+Low & Informational. Includes system restores, routine opens/closes, test messages. \\
+\hline
+\end{tabular}
+
+\subsection{Common Event Codes (SIA DC-09)}
+
+\begin{tabular}{|l|l|}
+\hline
+\textbf{Code} & \textbf{Description} \\
+\hline
+BA & Burglary \\
+\hline
+FA & Fire Alarm \\
+\hline
+PA & Panic Alarm \\
+\hline
+HA & Hold-up \\
+\hline
+BR & Burglary Restore \\
+\hline
+OP & Open \\
+\hline
+CL & Close \\
+\hline
+TA & Tamper \\
+\hline
+\end{tabular}
+
+\subsection{Alert Lifecycle}
+
+\begin{enumerate}
+\item \textbf{Alert Received:} SIA DC-09 message received via TCP/UDP, parsed, and stored in database with timestamp and priority.
+\item \textbf{Assignment:} Head/Admin assigns alert to available guard. Status changes to "assigned".
+\item \textbf{In Progress:} Guard accepts assignment and begins response. Can choose lockdown, dispatch, or investigate actions.
+\item \textbf{Resolved:} Guard marks alert as resolved with notes. Resolution time and actions are recorded for analytics.
+\end{enumerate}
+
+\section{Analytics}
+
+Understanding your security metrics.
+
+\subsection{Analytics Dashboard}
+
+\begin{itemize}
+\item \textbf{Alert Trends:} View alert volume over time periods (daily, weekly, monthly). Identify patterns and unusual spikes.
+\item \textbf{Response Time Analysis:} Track average time from alert receipt to acknowledgment, assignment, and resolution.
+\item \textbf{Event Category Distribution:} See breakdown of alert types: burglary, fire, access control, etc. Identify which systems trigger most alerts.
+\item \textbf{Peak Hours Analysis:} Identify times of day with highest alert volume. Optimize guard scheduling accordingly.
+\item \textbf{Hotspot Zones:} Identify sensors/zones with most frequent alerts. May indicate equipment issues or high-risk areas.
+\item \textbf{Guard Performance:} Track individual guard metrics: alerts handled, average response time, resolution rate.
+\end{itemize}
+
+\subsection{Key Performance Indicators}
+
+\begin{itemize}
+\item \textbf{Alert Resolution Rate:} Percentage of alerts resolved vs. total alerts received. Target: >95\%
+\item \textbf{Average Response Time:} Time from alert receipt to guard action. Target: Critical <5min, High <15min
+\item \textbf{First-Time Resolution Rate:} Alerts resolved without escalation or reassignment. Target: >85\%
+\item \textbf{Guard Availability:} Percentage of time guards are marked as available. Monitor for adequate coverage.
+\end{itemize}
+
+\section{Administration}
+
+Advanced configuration and management.
+
+\subsection{SIA Receiver Configuration}
+
+The SIA receiver runs as a separate Node.js service that can operate in two modes: Server mode (listens for connections) or Client mode (connects to a remote service).
+
+\subsubsection{Server Mode (Default)}
+Listens for incoming connections from security panels:
+
+\begin{lstlisting}[language=bash]
+# Start in server mode:
+npm run server
+
+# Default Configuration:
+TCP_HOST: 0.0.0.0
+TCP_PORT: 7800
+Protocol: SIA DC-09
+\end{lstlisting}
+
+Configure your security panels to send messages to the server's IP address on port 7800.
+
+\subsubsection{Client Mode}
+Connects to a remote SIA DC-09 service:
+
+\begin{lstlisting}[language=bash]
+# Start in client mode (Windows):
+$env:CONNECTION_MODE="client"; $env:REMOTE_HOST="127.0.0.1"; $env:REMOTE_PORT="7800"; npm run server
+
+# Start in client mode (Linux/Mac):
+CONNECTION_MODE=client REMOTE_HOST=127.0.0.1 REMOTE_PORT=7800 npm run server
+\end{lstlisting}
+
+Client mode is useful when connecting to existing SIA receivers or for testing with remote systems.
+
+\subsubsection{Environment Variables}
+\begin{itemize}
+\item CONNECTION\_MODE: "server" or "client" (default: server)
+\item TCP\_HOST: Server mode bind address (default: 0.0.0.0)
+\item TCP\_PORT: Server mode listen port (default: 7800)
+\item REMOTE\_HOST: Client mode remote IP (default: 127.0.0.1)
+\item REMOTE\_PORT: Client mode remote port (default: 7800)
+\item CONVEX\_URL: Convex backend URL
+\end{itemize}
+
+\subsection{Database Management}
+
+\subsubsection{Convex Database}
+The system uses Convex as the real-time database backend.
+\begin{itemize}
+\item Access Convex dashboard for raw data queries
+\item Run migrations using npx convex run migrations
+\item Export data for backup purposes
+\item Monitor database performance and usage
+\end{itemize}
+
+\subsubsection{Database Management CLI}
+Interactive CLI tool for managing alerts database:
+
+\begin{lstlisting}[language=bash]
+# Start the database manager:
+tsx server/dbManager.ts
+\end{lstlisting}
+
+Available operations:
+\begin{itemize}
+\item Count alerts in database
+\item List recent alerts (last 20)
+\item Migrate old format alerts to SIA DC-09
+\item Clear ALL alerts (with confirmation)
+\end{itemize}
+
+\subsubsection{Seeding Test Data}
+Commands for resetting or seeding database:
+
+\begin{lstlisting}[language=bash]
+# Seed initial data:
+npx convex run seed
+
+# Seed area map:
+npx convex run seedAreaMap
+
+# Clear and reseed:
+npx convex run clearAndSeed
+\end{lstlisting}
+
+\subsection{Troubleshooting}
+
+\subsubsection{Alerts Not Appearing}
+\begin{itemize}
+\item Verify SIA receiver is running (npm run server)
+\item Check security panel is sending to correct IP/port
+\item Review server console logs for parsing errors
+\item Confirm account numbers match between panel and database
+\end{itemize}
+
+\subsubsection{Sensors Not Linking to Alerts}
+\begin{itemize}
+\item Verify zone numbers match exactly (remove leading zeros)
+\item Check sensor is assigned to correct account number
+\item Ensure area numbers match receiver ID format
+\end{itemize}
+
+\subsubsection{Guards Not Receiving Assignments}
+\begin{itemize}
+\item Confirm guard is marked as "Available"
+\item Check guard has correct customer account associations
+\item Verify user role is set to "guard"
+\end{itemize}
+
+\subsubsection{Floor Plans Not Displaying}
+\begin{itemize}
+\item Verify image was uploaded successfully
+\item Check browser console for CORS or loading errors
+\item Ensure image format is supported (PNG, JPG)
+\end{itemize}
+
+\subsection{Support \& Resources}
+
+\begin{itemize}
+\item \textbf{SIA DC-09 Specification:} DC-09-1998.10
+\item \textbf{Framework:} React 19 + Vite
+\item \textbf{Database:} Convex
+\item \textbf{Version:} 1.0.0
+\end{itemize}
+
+\end{document}

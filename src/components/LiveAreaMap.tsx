@@ -14,6 +14,9 @@ interface LiveAreaMapProps {
 export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  // Get area data including area plan URL
+  const floor = useQuery(api.siteMap.getFloor, { floorId });
+  
   // Get sensors in this area
   const allSensors = useQuery(api.siteMap.getSensorsByFloor, { floorId });
   
@@ -50,28 +53,30 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
     canvas.width = width;
     canvas.height = height;
 
-    // Clear canvas
-    ctx.fillStyle = "#1a1a1a";
+    // Clear canvas with light background (area plan style)
+    ctx.fillStyle = "#f8f9fa";
     ctx.fillRect(0, 0, width, height);
 
-    // Draw grid
-    ctx.strokeStyle = "#2a2a2a";
-    ctx.lineWidth = 1;
-    for (let x = 0; x < width; x += 50) {
-      ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
-      ctx.stroke();
-    }
-    for (let y = 0; y < height; y += 50) {
-      ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
-      ctx.stroke();
-    }
+    const drawGrid = () => {
+      ctx.strokeStyle = "#e0e0e0";
+      ctx.lineWidth = 1;
+      for (let x = 0; x < width; x += 50) {
+        ctx.beginPath();
+        ctx.moveTo(x, 0);
+        ctx.lineTo(x, height);
+        ctx.stroke();
+      }
+      for (let y = 0; y < height; y += 50) {
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
+        ctx.stroke();
+      }
+    };
 
-    // Draw sensors
-    allSensors.forEach((sensor) => {
+    const drawSensors = () => {
+      // Draw sensors
+      allSensors.forEach((sensor) => {
       // Check if sensor has an active alert
       const hasAlert = areaAlerts.some(
         (alert) => alert.zoneNumber === sensor.zone
@@ -115,17 +120,40 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
       }
 
       // Draw sensor label
-      ctx.fillStyle = "#ffffff";
+      ctx.fillStyle = "#1f2937";
       ctx.font = hasAlert ? "bold 14px sans-serif" : "12px sans-serif";
       ctx.textAlign = "center";
       ctx.fillText(sensor.name, x, y - 30);
 
       // Draw zone number
       ctx.font = "10px sans-serif";
-      ctx.fillStyle = "#9ca3af";
+      ctx.fillStyle = "#6b7280";
       ctx.fillText(`Zone ${sensor.zone}`, x, y - 15);
     });
-  }, [allSensors, areaAlerts, width, height]);
+    };
+
+    // Load and draw area plan image if available
+    if (floor?.floorPlanUrl) {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => {
+        ctx.globalAlpha = 0.4;
+        ctx.drawImage(img, 0, 0, width, height);
+        ctx.globalAlpha = 1.0;
+        drawSensors();
+      };
+      img.onerror = () => {
+        // If image fails to load, draw grid as fallback
+        drawGrid();
+        drawSensors();
+      };
+      img.src = floor.floorPlanUrl;
+    } else {
+      // No area plan, draw grid
+      drawGrid();
+      drawSensors();
+    }
+  }, [allSensors, areaAlerts, width, height, floor]);
 
   const getPriorityColor = (priority?: string): string => {
     switch (priority) {

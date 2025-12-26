@@ -5,7 +5,7 @@ The `location-mapping.json` file maps security system account numbers and zones 
 
 ## File Location
 ```
-/home/akshay/Documents/BoschAlertHub/location-mapping.json
+/home/akshay/Documents/AISAC/location-mapping.json
 ```
 
 ## Structure
@@ -189,7 +189,7 @@ When a SIA DC-09 alert comes in:
 
 ```json
 "5555": {
-  "name": "Bosch Factory - Bidadi",
+  "name": "Industrial Facility - Bidadi",
   "city": "Bangalore",
   "state": "Karnataka",
   "country": "India",

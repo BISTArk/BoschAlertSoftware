@@ -108,6 +108,9 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
   const totalCount = useQuery(api.alerts.getAlertsCount)
   const filteredCount = useQuery(api.alerts.getFilteredAlertsCount, { filters })
   
+  // Fetch all users to show guard names
+  const allUsers = useQuery(api.auth.getUsers)
+  
   // Fetch all alerts for full export (with same filters)
   const allAlerts = useQuery(api.alerts.getAlerts, {
     paginationOpts: {
@@ -122,6 +125,8 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
 
     const headers = [
       "Received At",
+      "Status",
+      "Assigned To",
       "Customer Account",
       "Event Qualifier",
       "Event Code",
@@ -133,18 +138,26 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
       "Raw Message",
     ]
 
-    const rows = dataToExport.map((alert) => [
-      new Date(alert.receivedAt).toLocaleString(),
-      alert.accountNumber || alert.customerAccount || "",
-      alert.eventQualifier || "",
-      alert.eventCode || alert.contactIdEventCode || "",
-      alert.eventDescription || "",
-      alert.eventCategory || "",
-      alert.priority || alert.severity || "",
-      alert.zoneNumber || "",
-      alert.receiverId || "",
-      alert.rawMessage,
-    ])
+    const rows = dataToExport.map((alert) => {
+      const assignedUser = alert.assignedTo 
+        ? allUsers?.find(u => u._id === alert.assignedTo)
+        : null;
+      
+      return [
+        new Date(alert.receivedAt).toLocaleString(),
+        alert.status || "unassigned",
+        assignedUser ? assignedUser.name : "Unassigned",
+        alert.accountNumber || alert.customerAccount || "",
+        alert.eventQualifier || "",
+        alert.eventCode || alert.contactIdEventCode || "",
+        alert.eventDescription || "",
+        alert.eventCategory || "",
+        alert.priority || alert.severity || "",
+        alert.zoneNumber || "",
+        alert.receiverId || "",
+        alert.rawMessage,
+      ];
+    })
 
     const csvContent = [
       headers.join(","),
@@ -324,6 +337,7 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
             <TableRow>
               <TableHead>Received At</TableHead>
               <TableHead>Status</TableHead>
+              <TableHead>Assigned To</TableHead>
               <TableHead>Priority</TableHead>
               <TableHead>Customer Account</TableHead>
               <TableHead>Event</TableHead>
@@ -338,12 +352,17 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
           <TableBody>
             {alertsResult.page.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center text-muted-foreground">
+                <TableCell colSpan={12} className="text-center text-muted-foreground">
                   No alerts yet. Waiting for SIA messages...
                 </TableCell>
               </TableRow>
             ) : (
               alertsResult.page.map((alert) => {
+                // Find assigned guard
+                const assignedUser = alert.assignedTo 
+                  ? allUsers?.find(u => u._id === alert.assignedTo)
+                  : null;
+
                 const getStatusBadge = (status?: string) => {
                   const colors = {
                     unassigned: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
@@ -384,6 +403,22 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
                       {new Date(alert.receivedAt).toLocaleString()}
                     </TableCell>
                     <TableCell>{getStatusBadge(alert.status)}</TableCell>
+                    <TableCell>
+                      {assignedUser ? (
+                        <div className="flex items-center gap-2">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-medium text-primary">
+                              {assignedUser.name.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                          <span className="text-sm truncate max-w-[120px]" title={assignedUser.name}>
+                            {assignedUser.name}
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">Unassigned</span>
+                      )}
+                    </TableCell>
                     <TableCell>{getPriorityBadge(alert.priority)}</TableCell>
                     <TableCell>{alert.accountNumber || alert.customerAccount || "-"}</TableCell>
                     <TableCell>

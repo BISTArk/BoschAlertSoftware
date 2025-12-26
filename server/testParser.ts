@@ -5,7 +5,7 @@
 
 import { parseSiaDC09, generateSummary } from './siaDC09Parser.js';
 
-// Real packet examples from Bosch security panel captures
+// Real packet examples from security panel captures
 const testMessages = [
   // Burglary Alarms
   "[#3333|Nri01/BA0008/APB]",
