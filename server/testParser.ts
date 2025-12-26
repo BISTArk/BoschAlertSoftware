@@ -1,12 +1,13 @@
 /**
- * SIA DC-09 Parser Test
- * Tests the parser with real packet data from decoded_payloads.txt
+ * Security Protocol Parser Test
+ * Tests the parser with SIA DC-09 and Contact ID packet data
  */
 
 import { parseSiaDC09, generateSummary } from './siaDC09Parser.js';
 
 // Real packet examples from security panel captures
 const testMessages = [
+  // SIA DC-09 Examples
   // Burglary Alarms
   "[#3333|Nri01/BA0008/APB]",
   "[#3333|Nri01/BA0005/APB]",
@@ -26,10 +27,16 @@ const testMessages = [
   
   // Network Communication Warning
   "[#3333|NCW]",
+
+  // Contact ID Examples
+  "[#3333|18113001008]", // Burglary Alarm - Area 01, Point 008
+  "[#3333|18313001008]", // Burglary Restore - Area 01, Point 008
+  "[#3333|18140603001]", // Cancel by User - Area 03, Point 001
+  "[#3333|18113402002]", // Burglary Entry/Exit - Area 02, Point 002
 ];
 
 console.log("\n" + "═".repeat(80));
-console.log("SIA DC-09 Parser Test");
+console.log("Security Protocol Parser Test (SIA DC-09 & Contact ID)");
 console.log("═".repeat(80) + "\n");
 
 let successCount = 0;
