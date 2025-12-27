@@ -176,7 +176,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
           {/* Overview Card */}
           <Card>
             <CardHeader>
-              <CardTitle>Overview</CardTitle>
+              <CardTitle>Step 1: AI Analysis</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-6">
               {/* AI Summary */}
@@ -234,28 +234,6 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                     </div>
                   </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Step 1: AI Analysis */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
-                  <AlertCircle className="h-5 w-5 text-purple-600 dark:text-purple-400" />
-                </div>
-                Step 1: AI Analysis
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2">
-                <p className="text-sm">
-                  Pattern matches <span className="font-semibold text-purple-600">'Forced Entry'</span>
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  3 previous alerts at this location this month
-                </p>
               </div>
             </CardContent>
           </Card>

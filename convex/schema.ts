@@ -26,6 +26,12 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     address: v.optional(v.string()),
+    // Geographic location fields
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    city: v.optional(v.string()),
+    state: v.optional(v.string()),
+    country: v.optional(v.string()),
     active: v.boolean(),
     createdAt: v.number(),
     createdBy: v.id("users"),

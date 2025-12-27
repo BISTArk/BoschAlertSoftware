@@ -61,6 +61,11 @@ export function SiteMapSetup() {
   const [siteDescription, setSiteDescription] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [siteAccount, setSiteAccount] = useState("");
+  const [siteLatitude, setSiteLatitude] = useState("");
+  const [siteLongitude, setSiteLongitude] = useState("");
+  const [siteCity, setSiteCity] = useState("");
+  const [siteState, setSiteState] = useState("");
+  const [siteCountry, setSiteCountry] = useState("");
 
   const [floorName, setFloorName] = useState("");
   const [floorAccount, setFloorAccount] = useState("");
@@ -86,6 +91,11 @@ export function SiteMapSetup() {
         name: siteName,
         description: siteDescription || undefined,
         address: siteAddress || undefined,
+        latitude: siteLatitude ? parseFloat(siteLatitude) : undefined,
+        longitude: siteLongitude ? parseFloat(siteLongitude) : undefined,
+        city: siteCity || undefined,
+        state: siteState || undefined,
+        country: siteCountry || undefined,
       });
     } else {
       if (!user) return;
@@ -94,6 +104,11 @@ export function SiteMapSetup() {
         name: siteName,
         description: siteDescription || undefined,
         address: siteAddress || undefined,
+        latitude: siteLatitude ? parseFloat(siteLatitude) : undefined,
+        longitude: siteLongitude ? parseFloat(siteLongitude) : undefined,
+        city: siteCity || undefined,
+        state: siteState || undefined,
+        country: siteCountry || undefined,
         createdBy: user._id,
       });
     }
@@ -102,6 +117,11 @@ export function SiteMapSetup() {
     setSiteDescription("");
     setSiteAddress("");
     setSiteAccount("");
+    setSiteLatitude("");
+    setSiteLongitude("");
+    setSiteCity("");
+    setSiteState("");
+    setSiteCountry("");
     setEditingSite(null);
     setShowSiteDialog(false);
   };
@@ -112,6 +132,11 @@ export function SiteMapSetup() {
     setSiteDescription(site.description || "");
     setSiteAddress(site.address || "");
     setSiteAccount(site.accountNumber || "");
+    setSiteLatitude(site.latitude ? site.latitude.toString() : "");
+    setSiteLongitude(site.longitude ? site.longitude.toString() : "");
+    setSiteCity(site.city || "");
+    setSiteState(site.state || "");
+    setSiteCountry(site.country || "");
     setShowSiteDialog(true);
   };
 
@@ -149,9 +174,18 @@ export function SiteMapSetup() {
   const handleEditFloor = (floor: any) => {
     setEditingFloor(floor._id);
     setFloorName(floor.name);
+    setFloorArea(floor.areaNumber || "");
     setFloorWidth(floor.width.toString());
     setFloorHeight(floor.height.toString());
     setFloorPlanUrl(floor.floorPlanUrl || "");
+    
+    // Pre-fill account number from the site
+    if (sites) {
+      const site = sites.find(s => s._id === floor.siteId);
+      if (site) {
+        setFloorAccount(site.accountNumber);
+      }
+    }
     setShowFloorDialog(true);
   };
 
@@ -206,6 +240,32 @@ export function SiteMapSetup() {
     if (confirm("Are you sure you want to delete this sensor?")) {
       await deleteSensor({ sensorId });
     }
+  };
+
+  const handleAddFloor = () => {
+    // Pre-fill account number from selected site
+    if (selectedSite && sites) {
+      const site = sites.find(s => s._id === selectedSite);
+      if (site) {
+        setFloorAccount(site.accountNumber);
+      }
+    }
+    setShowFloorDialog(true);
+  };
+
+  const handleAddSensor = () => {
+    // Pre-fill account and area numbers from selected floor
+    if (selectedFloor && floors) {
+      const floor = floors.find(f => f._id === selectedFloor);
+      if (floor && sites) {
+        const site = sites.find(s => s._id === floor.siteId);
+        if (site) {
+          setSensorAccount(site.accountNumber);
+          setSensorArea(floor.areaNumber);
+        }
+      }
+    }
+    setShowSensorDialog(true);
   };
 
   if (user?.role !== "admin") {
@@ -292,7 +352,7 @@ export function SiteMapSetup() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
-              onClick={() => setShowFloorDialog(true)}
+              onClick={handleAddFloor}
               className="w-full"
               disabled={!selectedSite}
             >
@@ -347,7 +407,7 @@ export function SiteMapSetup() {
           </CardHeader>
           <CardContent className="space-y-4">
             <Button
-              onClick={() => setShowSensorDialog(true)}
+              onClick={handleAddSensor}
               className="w-full"
               disabled={!selectedFloor}
             >
@@ -403,6 +463,11 @@ export function SiteMapSetup() {
           setSiteDescription("");
           setSiteAddress("");
           setSiteAccount("");
+          setSiteLatitude("");
+          setSiteLongitude("");
+          setSiteCity("");
+          setSiteState("");
+          setSiteCountry("");
         }
       }}>
         <DialogContent>
@@ -456,6 +521,69 @@ export function SiteMapSetup() {
                 rows={3}
               />
             </div>
+
+            {/* Geographic Location Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3">Geographic Location (Optional)</h4>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="siteLatitude">Latitude</Label>
+                  <Input
+                    id="siteLatitude"
+                    type="number"
+                    step="any"
+                    value={siteLatitude}
+                    onChange={(e) => setSiteLatitude(e.target.value)}
+                    placeholder="e.g., 24.7136"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="siteLongitude">Longitude</Label>
+                  <Input
+                    id="siteLongitude"
+                    type="number"
+                    step="any"
+                    value={siteLongitude}
+                    onChange={(e) => setSiteLongitude(e.target.value)}
+                    placeholder="e.g., 46.6753"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="siteCity">City</Label>
+                <Input
+                  id="siteCity"
+                  value={siteCity}
+                  onChange={(e) => setSiteCity(e.target.value)}
+                  placeholder="e.g., Riyadh"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="siteState">State/Province</Label>
+                  <Input
+                    id="siteState"
+                    value={siteState}
+                    onChange={(e) => setSiteState(e.target.value)}
+                    placeholder="e.g., Riyadh Province"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="siteCountry">Country</Label>
+                  <Input
+                    id="siteCountry"
+                    value={siteCountry}
+                    onChange={(e) => setSiteCountry(e.target.value)}
+                    placeholder="e.g., Saudi Arabia"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
@@ -466,6 +594,11 @@ export function SiteMapSetup() {
               setSiteDescription("");
               setSiteAddress("");
               setSiteAccount("");
+              setSiteLatitude("");
+              setSiteLongitude("");
+              setSiteCity("");
+              setSiteState("");
+              setSiteCountry("");
             }}>
               Cancel
             </Button>
@@ -479,13 +612,6 @@ export function SiteMapSetup() {
       {/* Create Floor Dialog */}
       <Dialog open={showFloorDialog} onOpenChange={(open) => {
         setShowFloorDialog(open);
-        if (open && selectedSite && !editingFloor) {
-          // Pre-fill account number from selected site
-          const site = sites?.find(s => s._id === selectedSite);
-          if (site) {
-            setFloorAccount(site.accountNumber);
-          }
-        }
         if (!open) {
           setEditingFloor(null);
           setFloorName("");
@@ -598,11 +724,14 @@ export function SiteMapSetup() {
       {/* Create Sensor Dialog */}
       <Dialog open={showSensorDialog} onOpenChange={(open) => {
         setShowSensorDialog(open);
+        console.log("Sensor dialog open:", open, selectedFloor, editingSensor, floors);
         if (open && selectedFloor && !editingSensor) {
           // Pre-fill account and area numbers
           const floor = floors?.find(f => f._id === selectedFloor);
+          console.log("Selected floor for pre-fill:", floor);
           if (floor) {
             const site = sites?.find(s => s._id === floor.siteId);
+            console.log("Pre-filling sensor account/area:", site, floor);
             if (site) {
               setSensorAccount(site.accountNumber);
               setSensorArea(floor.areaNumber);
@@ -641,33 +770,28 @@ export function SiteMapSetup() {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="sensorAccount">Account Number *</Label>
+                <Label htmlFor="sensorAccount">Account Number</Label>
                 <Input
                   id="sensorAccount"
                   value={sensorAccount}
                   onChange={(e) => setSensorAccount(e.target.value)}
                   placeholder="e.g., 3333"
-                  disabled={!editingSensor}
+                  disabled
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sensorArea">Area Number *</Label>
+                <Label htmlFor="sensorArea">Area Number</Label>
                 <Input
                   id="sensorArea"
                   value={sensorArea}
                   onChange={(e) => setSensorArea(e.target.value)}
                   placeholder="e.g., 01"
-                  disabled={!editingSensor}
+                  disabled
                 />
               </div>
             </div>
-            {!editingSensor && (
-              <p className="text-xs text-muted-foreground">Account and area numbers are pre-filled from the selected floor</p>
-            )}
-            {editingSensor && (
-              <p className="text-xs text-muted-foreground">Account and area numbers cannot be changed</p>
-            )}
+            <p className="text-xs text-muted-foreground">Account and area numbers are pre-filled from the selected floor and cannot be edited</p>
 
             <div className="space-y-2">
               <Label htmlFor="sensorType">Sensor Type</Label>
@@ -735,7 +859,7 @@ export function SiteMapSetup() {
             }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveSensor} disabled={!sensorName || !sensorAccount || !sensorArea}>
+            <Button onClick={handleSaveSensor} disabled={!sensorName}>
               {editingSensor ? "Update Sensor" : "Create Sensor"}
             </Button>
           </DialogFooter>

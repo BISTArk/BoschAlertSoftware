@@ -24,6 +24,7 @@ export default internalMutation(async (ctx) => {
 
   // Create a sample site
   const siteId = await ctx.db.insert("sites", {
+    accountNumber: "9999",
     name: "AISAC Headquarters",
     description: "Main office building with server rooms and security systems",
     address: "123 Industrial Drive, Tech City",
