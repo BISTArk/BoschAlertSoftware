@@ -66,6 +66,13 @@ export const updateSite = mutation({
   },
 });
 
+export const deleteSite = mutation({
+  args: { siteId: v.id("sites") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.siteId, { active: false });
+  },
+});
+
 // ============= FLOORS =============
 
 export const createFloor = mutation({
@@ -201,6 +208,13 @@ export const updateFloor = mutation({
   handler: async (ctx, args) => {
     const { floorId, ...updates } = args;
     await ctx.db.patch(floorId, updates);
+  },
+});
+
+export const deleteFloor = mutation({
+  args: { floorId: v.id("floors") },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.floorId, { active: false });
   },
 });
 

@@ -32,7 +32,7 @@ async function determineGuardAssignment(
   // Get all available guards
   const availableGuards = await ctx.db
     .query("users")
-    .withIndex("by_role_and_available", (q) => 
+    .withIndex("by_role_and_available", (q: any) => 
       q.eq("role", "guard").eq("available", true)
     )
     .collect();
@@ -66,7 +66,7 @@ async function determineGuardAssignment(
   }
 
   // Find current guard's index in available guards list
-  const currentIndex = availableGuards.findIndex(g => g._id === lastAssignedGuard);
+  const currentIndex = availableGuards.findIndex((g: any) => g._id === lastAssignedGuard);
   
   // Move to next guard (wrap around to start if needed)
   const nextIndex = currentIndex >= 0 
@@ -100,6 +100,7 @@ export const createSiaDC09Alert = mutation({
     ),
     eventQualifier: v.optional(v.string()),
     eventTimestamp: v.optional(v.number()),
+    isAlert: v.optional(v.boolean()), // Indicates if this event should trigger an alert
   },
   handler: async (ctx, args) => {
     // Try to find matching sensor by account number and zone
@@ -154,6 +155,7 @@ export const createSiaDC09Alert = mutation({
       eventCategory: args.eventCategory,
       priority: args.priority,
       eventQualifier: args.eventQualifier,
+      isAlert: args.isAlert,
       sensorId,
       floorId,
       receivedAt: Date.now(),

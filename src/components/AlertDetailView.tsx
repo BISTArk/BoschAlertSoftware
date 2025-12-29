@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle, TrendingUp } from "lucide-react";
+import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertActions } from "@/components/AlertActions";
 import { AreaFloorPlanView } from "@/components/AreaFloorPlanView";
@@ -32,6 +32,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
   const [showResolveDialog, setShowResolveDialog] = useState(false);
   const [showInvestigateDialog, setShowInvestigateDialog] = useState(false);
   const [showCloseDialog, setShowCloseDialog] = useState(false);
+  const [timeElapsed, setTimeElapsed] = useState(0);
 
   const updateStatus = useMutation(api.alerts.updateAlertStatus);
 
@@ -42,6 +43,22 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
   // Get all users to find assigned guard
   const allUsers = useQuery(api.auth.getUsers);
   const assignedUser = allUsers?.find((u) => u._id === alert?.assignedTo);
+
+  // Update timer every second
+  useEffect(() => {
+    if (!alert) return;
+
+    // Initial calculation
+    setTimeElapsed(Math.floor((Date.now() - alert.receivedAt) / 1000));
+
+    // Update every second
+    const interval = setInterval(() => {
+      setTimeElapsed(Math.floor((Date.now() - alert.receivedAt) / 1000));
+    }, 1000);
+
+    // Cleanup on unmount
+    return () => clearInterval(interval);
+  }, [alert?.receivedAt]);
 
   const handleAction = async (action: string) => {
     if (!user) return;
@@ -112,8 +129,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
     );
   }
 
-  // Calculate time elapsed
-  const timeElapsed = Math.floor((Date.now() - alert.receivedAt) / 1000);
+  // Calculate time display from elapsed seconds
   const minutes = Math.floor(timeElapsed / 60);
   const seconds = timeElapsed % 60;
   const timeDisplay = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -129,10 +145,19 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
     }
   };
 
-  // Mock data for AI summary and risk trend (replace with real data later)
-  const aiRiskScore = 87;
-  const riskIncrease = 14;
-  const patternSummary = "Repeated unauthorized access attempts detected at this location. Pattern matches 3 previous incidents this month. Individual bypassed card reader system during off-hours.";
+  // Get AI analysis data or use fallback
+  const hasAIAnalysis = alert.aiSummary && alert.aiRiskScore !== undefined;
+  const aiRiskScore = hasAIAnalysis ? alert.aiRiskScore : null;
+  const aiSummary = hasAIAnalysis ? alert.aiSummary : null;
+  const aiRecommendedActions = hasAIAnalysis ? alert.aiRecommendedActions : [];
+  const aiRiskLevel = hasAIAnalysis ? alert.aiRiskLevel : null;
+  
+  // Format action text for display
+  const formatAction = (action: string) => {
+    return action.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -178,95 +203,135 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
             <CardHeader>
               <CardTitle>Step 1: AI Analysis</CardTitle>
             </CardHeader>
-            <CardContent className="grid grid-cols-2 gap-6">
-              {/* AI Summary */}
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-muted-foreground mb-1">AI SUMMARY</p>
-                  <div className="space-y-2">
+            <CardContent className="space-y-4">
+              {hasAIAnalysis ? (
+                <div className="grid grid-cols-2 gap-6">
+                  {/* AI Summary */}
+                  <div className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium mb-1">Incident Type</p>
-                      <p className="text-lg font-semibold">
-                        {alert.eventDescription || "Unauthorized Access - Forced Entry"}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1">AI Risk Score</p>
-                      <div className="flex items-baseline gap-2">
-                        <span className="text-4xl font-bold text-red-500">{aiRiskScore}</span>
-                        <span className="text-lg text-muted-foreground">/100</span>
+                      <p className="text-xs text-muted-foreground mb-1">AI SUMMARY</p>
+                      <div className="space-y-2">
+                        <div>
+                          <p className="text-sm font-medium mb-1">Incident Type</p>
+                          <p className="text-lg font-semibold">
+                            {alert.eventDescription || "Security Alert"}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">AI Risk Score</p>
+                          <div className="flex items-baseline gap-2">
+                            <span className={`text-4xl font-bold ${
+                              aiRiskScore! >= 80 ? "text-red-500" :
+                              aiRiskScore! >= 60 ? "text-orange-500" :
+                              aiRiskScore! >= 40 ? "text-yellow-500" :
+                              "text-green-500"
+                            }`}>{aiRiskScore}</span>
+                            <span className="text-lg text-muted-foreground">/100</span>
+                            <Badge className={`ml-2 ${
+                              aiRiskLevel === "critical" ? "bg-red-600" :
+                              aiRiskLevel === "high" ? "bg-orange-600" :
+                              aiRiskLevel === "medium" ? "bg-yellow-600" :
+                              "bg-green-600"
+                            }`}>{aiRiskLevel?.toUpperCase()}</Badge>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium mb-1">AI Summary</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {aiSummary}
+                          </p>
+                        </div>
+                        {alert.aiReasoning && (
+                          <div>
+                            <p className="text-sm font-medium mb-1">Analysis Reasoning</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">
+                              {alert.aiReasoning}
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
-                    <div>
-                      <p className="text-sm font-medium mb-1">Pattern Summary</p>
-                      <p className="text-sm text-muted-foreground leading-relaxed">
-                        {patternSummary}
-                      </p>
-                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Risk Trend */}
-              <div className="space-y-4">
-                <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs text-muted-foreground">RISK TREND</p>
-                    <p className="text-xs text-muted-foreground">Repeat pattern at this location</p>
-                  </div>
-                  <div className="flex items-center gap-2 mb-4">
-                    <TrendingUp className="h-6 w-6 text-red-500" />
-                    <span className="text-3xl font-bold text-red-500">+{riskIncrease}%</span>
-                    <span className="text-sm text-muted-foreground">Risk Increase</span>
-                  </div>
-                  {/* Bar Chart */}
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted-foreground mb-2">Last 8 hours</p>
-                    <div className="flex items-end gap-1 h-32">
-                      {[45, 52, 48, 65, 72, 58, 78, 87].map((value, i) => (
-                        <div key={i} className="flex-1 flex flex-col justify-end">
-                          <div
-                            className="bg-red-500 rounded-t-lg"
-                            style={{ height: `${value}%` }}
-                          />
+                  {/* Risk Details */}
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-3">RESPONSE TIME</p>
+                      <div className="flex items-center gap-2 mb-4">
+                        <Clock className="h-6 w-6 text-blue-500" />
+                        <span className="text-2xl font-bold">{alert.aiEstimatedResponseTime || "Unknown"}</span>
+                      </div>
+                      {alert.aiAdditionalContext && alert.aiAdditionalContext !== "None" && (
+                        <div>
+                          <p className="text-sm font-medium mb-1">Additional Context</p>
+                          <p className="text-sm text-muted-foreground leading-relaxed">
+                            {alert.aiAdditionalContext}
+                          </p>
                         </div>
-                      ))}
+                      )}
+                      <div className="mt-4">
+                        <p className="text-xs text-muted-foreground mb-1">AI Analysis Completed</p>
+                        <p className="text-sm">
+                          {alert.aiAnalyzedAt ? new Date(alert.aiAnalyzedAt).toLocaleString() : "N/A"}
+                        </p>
+                        {alert.aiAnalysisDuration && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Analysis took {(alert.aiAnalysisDuration / 1000).toFixed(2)}s
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="h-12 w-12 mx-auto mb-3 text-yellow-500" />
+                  <p className="text-lg font-semibold mb-2">AI Analysis Not Available</p>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Error generating AI summary. Showing basic alert information.
+                  </p>
+                  <div className="bg-muted p-4 rounded-lg text-left max-w-md mx-auto">
+                    <p className="text-sm font-medium mb-2">Basic Alert Info:</p>
+                    <div className="space-y-1 text-sm text-muted-foreground">
+                      <p>• Event: {alert.eventDescription || "Security Alert"}</p>
+                      <p>• Category: {alert.eventCategory || "Unknown"}</p>
+                      <p>• Priority: {(alert.priority || "medium").toUpperCase()}</p>
+                      <p>• Account: {alert.accountNumber}</p>
+                      <p>• Zone: {alert.zoneNumber || "N/A"}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Step 2: Verification */}
+          {/* Step 2: AI Recommended Actions */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
                   <CheckCircle className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
-                Step 2: AI recommended Steps
+                Step 2: AI Recommended Actions
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center space-x-2">
-                <Checkbox id="verify-visual" />
-                <Label htmlFor="verify-visual" className="text-sm font-normal">
-                  Visually Confirm Intruder
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="verify-card" />
-                <Label htmlFor="verify-card" className="text-sm font-normal">
-                  Check Card Access Logs
-                </Label>
-              </div>
-              <div className="flex items-center space-x-2">
-                <Checkbox id="call-guard" />
-                <Label htmlFor="call-guard" className="text-sm font-normal">
-                  Call the On-Site Guard
-                </Label>
-              </div>
+              {hasAIAnalysis && aiRecommendedActions && aiRecommendedActions.length > 0 ? (
+                aiRecommendedActions.map((action, index) => (
+                  <div key={index} className="flex items-center space-x-2">
+                    <Checkbox id={`action-${index}`} />
+                    <Label htmlFor={`action-${index}`} className="text-sm font-normal">
+                      {formatAction(action)}
+                    </Label>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-sm text-muted-foreground">
+                    No AI-recommended actions available. Please follow standard procedures.
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
 

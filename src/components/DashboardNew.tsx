@@ -209,27 +209,27 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                 <TabsTrigger value="alerts" className="rounded-none">
                   Alerts
                   <Badge variant="secondary" className="ml-2">
-                    {filteredAlerts.filter(a => a.eventQualifier !== "R").length}
+                    {filteredAlerts.filter(a => a.isAlert !== false).length}
                   </Badge>
                 </TabsTrigger>
                 <TabsTrigger value="events" className="rounded-none">
                   Events
                   <Badge variant="secondary" className="ml-2">
-                    {filteredAlerts.filter(a => a.eventQualifier === "R").length}
+                    {filteredAlerts.filter(a => a.isAlert === false).length}
                   </Badge>
                 </TabsTrigger>
               </TabsList>
               
               <TabsContent value="alerts" className="mt-0">
                 <div className="max-h-[520px] overflow-y-auto">
-                  {filteredAlerts.filter(a => a.eventQualifier !== "R").length === 0 ? (
+                  {filteredAlerts.filter(a => a.isAlert !== false).length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <p className="text-sm">No active alerts</p>
                     </div>
                   ) : (
                     <div className="space-y-0">
                       {filteredAlerts
-                        .filter(alert => alert.eventQualifier !== "R")
+                        .filter(alert => alert.isAlert !== false)
                         .map((alert, index) => {
                           const threat = getThreatLevel(alert.eventCode, alert.priority);
                           const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
@@ -277,14 +277,14 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
               
               <TabsContent value="events" className="mt-0">
                 <div className="max-h-[520px] overflow-y-auto">
-                  {filteredAlerts.filter(a => a.eventQualifier === "R").length === 0 ? (
+                  {filteredAlerts.filter(a => a.isAlert === false).length === 0 ? (
                     <div className="p-6 text-center text-muted-foreground">
                       <p className="text-sm">No events recorded</p>
                     </div>
                   ) : (
                     <div className="space-y-0">
                       {filteredAlerts
-                        .filter(alert => alert.eventQualifier === "R")
+                        .filter(alert => alert.isAlert === false)
                         .map((alert, index) => {
                           const assignedUser = allUsers?.find((u) => u._id === alert.assignedTo);
                           
@@ -299,13 +299,13 @@ export function DashboardNew({ onAlertClick }: DashboardNewProps = {}) {
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center justify-between mb-1">
                                     <h4 className="text-sm font-semibold truncate">
-                                      {alert.eventDescription || alert.eventCode} - Restored
+                                      {alert.eventDescription || alert.eventCode}
                                     </h4>
                                     <Badge
-                                      className="text-xs ml-2 bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200"
+                                      className="text-xs ml-2 bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200"
                                       variant="outline"
                                     >
-                                      Restore
+                                      {alert.eventQualifier === "R" ? "Restore" : "Event"}
                                     </Badge>
                                   </div>
                                   <p className="text-xs text-muted-foreground mb-1">

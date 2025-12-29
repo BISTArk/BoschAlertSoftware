@@ -58,6 +58,7 @@ async function storeSiaDC09Alert(parsed: ReturnType<typeof parseSiaDC09>): Promi
           priority: parsed.priority,
           eventQualifier: parsed.eventQualifier,
           eventTimestamp: parsed.timestamp,
+          isAlert: parsed.isAlert, // Include alert classification
         }],
         format: "json",
       }),
@@ -67,11 +68,51 @@ async function storeSiaDC09Alert(parsed: ReturnType<typeof parseSiaDC09>): Promi
       const errorText = await response.text();
       console.error("Failed to store alert:", errorText);
     } else {
+      const result = await response.json();
+      const alertId = result?.value;
       console.log("✓ Alert stored in Convex");
+      
+      // Trigger AI analysis for actual alerts (not just events)
+      if (parsed.isAlert && alertId) {
+        console.log("🤖 Triggering AI analysis...");
+        triggerAIAnalysis(alertId).catch(err => {
+          console.error("❌ AI analysis error:", err.message);
+        });
+      }
     }
   } catch (error) {
     console.error("Error storing alert:", error);
   }
+}
+
+/**
+ * Trigger AI analysis for an alert (non-blocking)
+ */
+async function triggerAIAnalysis(alertId: string): Promise<void> {
+  const response = await fetch(`${CONVEX_SITE_URL}/api/action`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      path: "aiAnalysis:analyzeAlertWithAI",
+      args: [{ alertId }],
+      format: "json",
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`AI analysis API error: ${errorText}`);
+  }
+  
+  const result = await response.json();
+  
+  if (result.status ==- 'error') {
+    throw new Error(result.error);
+  }
+  console.log("🤖 AI analysis triggered successfully", result);
+  console.log(`✅ AI Analysis complete: Risk ${result.value?.riskScore}/100 (${result.value?.riskLevel})`);
 }
 
 /**
@@ -213,8 +254,9 @@ function getTimestamp(): string {
 function extractSiaMessage(data: Buffer): string | null {
   const dataStr = data.toString('ascii');
   
-  // Look for SIA message pattern [#...] or [...|...]
-  const siaMatch = dataStr.match(/(\[#?\d+[^\]]*\])/);
+  // Look for SIA message pattern [#AccountNumber|...] (requires # symbol)
+  // This ensures we don't match control characters like [10] or [13]
+  const siaMatch = dataStr.match(/(\[#\d+[^\]]*\])/);
   
   if (siaMatch) {
     return siaMatch[1];
@@ -264,6 +306,14 @@ async function handleSiaData(data: Buffer, socket: net.Socket): Promise<void> {
     const parsed = parseSiaDC09(siaMessage);
     if (parsed) {
       console.log(`         ✅ Account: ${parsed.accountNumber} | Event: ${parsed.eventCode} - ${parsed.eventDescription}`);
+      
+      // Indicate if this is an alert
+      if (parsed.isAlert) {
+        console.log(`         🔔 ALERT: This event triggers an alert`);
+      } else {
+        console.log(`         ℹ️  INFO: This is an event only (not an alert)`);
+      }
+      
       if (parsed.priority === "critical" || parsed.priority === "high") {
         console.log(`         🚨 Priority: ${parsed.priority.toUpperCase()}`);
       }

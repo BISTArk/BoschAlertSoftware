@@ -113,6 +113,7 @@ async function streamPackets() {
         console.log(`[${sentCount + 1}/${securityPackets.length}]`);
         console.log(`Time: ${packet.timestamp}`);
         
+        console.log("📤 Sending packet...", payloadHex);
         await sendPacket(payloadHex);
         sentCount++;
         

@@ -94,6 +94,25 @@ export default defineSchema({
       v.literal("low")
     )), // Alert priority based on event type - TEMPORARY: optional for migration
     
+    // Alert classification
+    isAlert: v.optional(v.boolean()), // true if this event should trigger an alert, false if just an event
+    
+    // ========== AI-Generated Analysis ==========
+    aiSummary: v.optional(v.string()), // AI-generated summary of the alert situation
+    aiRiskScore: v.optional(v.number()), // AI risk score (0-100)
+    aiRiskLevel: v.optional(v.union(
+      v.literal("low"),
+      v.literal("medium"),
+      v.literal("high"),
+      v.literal("critical")
+    )), // AI-determined risk level
+    aiRecommendedActions: v.optional(v.array(v.string())), // AI-recommended actions
+    aiReasoning: v.optional(v.string()), // AI reasoning for recommendations
+    aiEstimatedResponseTime: v.optional(v.string()), // AI-suggested response time
+    aiAdditionalContext: v.optional(v.string()), // Additional AI context
+    aiAnalyzedAt: v.optional(v.number()), // Timestamp when AI analysis was performed
+    aiAnalysisDuration: v.optional(v.number()), // Duration of AI analysis in milliseconds
+    
     // ========== Legacy Contact ID Fields (for backwards compatibility) ==========
     customerAccount: v.optional(v.string()), // DEPRECATED: Use accountNumber
     contactIdEventCode: v.optional(v.string()), // DEPRECATED: Use eventCode
@@ -151,5 +170,7 @@ export default defineSchema({
     .index("by_sensor", ["sensorId"])
     .index("by_category", ["eventCategory"])
     .index("by_priority_and_time", ["priority", "receivedAt"])
-    .index("by_account_and_area", ["accountNumber", "areaNumber"]),
+    .index("by_account_and_area", ["accountNumber", "areaNumber"])
+    .index("by_is_alert", ["isAlert"])
+    .index("by_is_alert_and_time", ["isAlert", "receivedAt"]),
 });

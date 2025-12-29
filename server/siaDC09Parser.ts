@@ -24,6 +24,41 @@ export interface SiaDC09Message {
   eventCategory: string;
   priority: "critical" | "high" | "medium" | "low";
   timestamp: number;
+  isAlert?: boolean; // Indicates if this event should trigger an alert
+}
+
+/**
+ * Determines if an event should be classified as an alert
+ * Not all events are alerts - this function filters which events require alerting
+ * 
+ * Current conditions:
+ * - Contact ID messages starting with "181" are alerts
+ * 
+ * @param parsed - The parsed SIA DC-09 message
+ * @returns true if the event should trigger an alert, false otherwise
+ */
+export function isAlertEvent(parsed: SiaDC09Message): boolean {
+  const rawContent = parsed.raw.match(/\[([^\]]+)\]/)?.[1] || "";
+  const parts = rawContent.split("|");
+  
+  // Check if it's a Contact ID format message
+  if (parts.length > 1 && /^\d/.test(parts[1])) {
+    const contactIdData = parts[1];
+    
+    // Contact ID messages starting with "181" are alerts
+    if (contactIdData.startsWith("181")) {
+      return true;
+    }
+    
+    // Add more Contact ID alert conditions here as needed
+    // Example: if (contactIdData.startsWith("182")) { return true; }
+  }
+  
+  // Add SIA DC-09 format alert conditions here as needed
+  // Example: if (parsed.eventCode === "BA") { return true; }
+  
+  // By default, events are not alerts unless they match specific conditions
+  return false;
 }
 
 // SIA DC-09 and Contact ID Event Code Mappings
@@ -432,7 +467,7 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
           description += ` - Area ${parseInt(areaNumber, 10)}`;
         }
         
-        return {
+        const result: SiaDC09Message = {
           raw: message,
           accountNumber,
           eventCode,
@@ -442,19 +477,25 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
           eventDescription: description,
           eventCategory: eventInfo.category,
           priority: eventInfo.priority,
-          timestamp
+          timestamp,
+          isAlert: false // Temporary, will be set below
         };
+        result.isAlert = isAlertEvent(result);
+        return result;
       } else {
         // Incomplete Contact ID message
-        return {
+        const result: SiaDC09Message = {
           raw: message,
           accountNumber,
           eventCode: "Unknown",
           eventDescription: "Incomplete Contact ID Message",
           eventCategory: "System",
           priority: "low" as const,
-          timestamp
+          timestamp,
+          isAlert: false // Temporary, will be set below
         };
+        result.isAlert = isAlertEvent(result);
+        return result;
       }
     }
     
@@ -469,28 +510,34 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
         priority: "medium" as const
       };
       
-      return {
+      const result: SiaDC09Message = {
         raw: message,
         accountNumber,
         eventCode,
         eventDescription: eventInfo.description,
         eventCategory: eventInfo.category,
         priority: eventInfo.priority,
-        timestamp
+        timestamp,
+        isAlert: false // Temporary, will be set below
       };
+      result.isAlert = isAlertEvent(result);
+      return result;
     }
     
     // If only account number (incomplete message)
     if (parts.length === 1 || !parts[1]) {
-      return {
+      const result: SiaDC09Message = {
         raw: message,
         accountNumber,
         eventCode: "Unknown",
         eventDescription: "Incomplete Message",
         eventCategory: "System",
         priority: "low" as const,
-        timestamp
+        timestamp,
+        isAlert: false // Temporary, will be set below
       };
+      result.isAlert = isAlertEvent(result);
+      return result;
     }
     
     // Parse the rest: ReceiverId/EventCode/AreaInfo
@@ -572,7 +619,7 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
       description += ` (${areaInfo})`;
     }
     
-    return {
+    const result: SiaDC09Message = {
       raw: message,
       accountNumber,
       receiverId,
@@ -585,8 +632,11 @@ export function parseSiaDC09(message: string): SiaDC09Message | null {
       eventDescription: description,
       eventCategory: eventInfo.category,
       priority: eventInfo.priority,
-      timestamp
+      timestamp,
+      isAlert: false // Temporary, will be set below
     };
+    result.isAlert = isAlertEvent(result);
+    return result;
     
   } catch (error) {
     console.error("Error parsing SIA DC-09 message:", error);

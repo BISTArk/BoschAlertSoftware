@@ -50,8 +50,10 @@ export function SiteMapSetup() {
 
   const createSite = useMutation(api.siteMap.createSite);
   const updateSite = useMutation(api.siteMap.updateSite);
+  const deleteSite = useMutation(api.siteMap.deleteSite);
   const createFloor = useMutation(api.siteMap.createFloor);
   const updateFloor = useMutation(api.siteMap.updateFloor);
+  const deleteFloor = useMutation(api.siteMap.deleteFloor);
   const createSensor = useMutation(api.siteMap.createSensor);
   const updateSensor = useMutation(api.siteMap.updateSensor);
   const deleteSensor = useMutation(api.siteMap.deleteSensor);
@@ -242,6 +244,25 @@ export function SiteMapSetup() {
     }
   };
 
+  const handleDeleteSite = async (siteId: Id<"sites">) => {
+    if (confirm("Are you sure you want to delete this site? This will also affect all associated areas and sensors.")) {
+      await deleteSite({ siteId });
+      if (selectedSite === siteId) {
+        setSelectedSite(null);
+        setSelectedFloor(null);
+      }
+    }
+  };
+
+  const handleDeleteFloor = async (floorId: Id<"floors">) => {
+    if (confirm("Are you sure you want to delete this area? This will also affect all associated sensors.")) {
+      await deleteFloor({ floorId });
+      if (selectedFloor === floorId) {
+        setSelectedFloor(null);
+      }
+    }
+  };
+
   const handleAddFloor = () => {
     // Pre-fill account number from selected site
     if (selectedSite && sites) {
@@ -324,15 +345,28 @@ export function SiteMapSetup() {
                     </div>
                     {site.address && <div className="text-xs text-muted-foreground">{site.address}</div>}
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 w-full"
-                    onClick={() => handleEditSite(site)}
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEditSite(site)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteSite(site._id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -379,15 +413,28 @@ export function SiteMapSetup() {
                       {floor.width} x {floor.height}px
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 w-full"
-                    onClick={() => handleEditFloor(floor)}
-                  >
-                    <Edit className="h-3 w-3 mr-1" />
-                    Edit
-                  </Button>
+                  <div className="flex gap-2 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEditFloor(floor)}
+                    >
+                      <Edit className="h-3 w-3 mr-1" />
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteFloor(floor._id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -470,7 +517,7 @@ export function SiteMapSetup() {
           setSiteCountry("");
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingSite ? "Edit Site" : "Add New Site"}</DialogTitle>
             <DialogDescription>
@@ -478,7 +525,7 @@ export function SiteMapSetup() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label htmlFor="siteName">Site Name *</Label>
               <Input
@@ -622,7 +669,7 @@ export function SiteMapSetup() {
           setFloorPlanUrl("");
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingFloor ? "Edit Area" : "Add New Area"}</DialogTitle>
             <DialogDescription>
@@ -630,7 +677,7 @@ export function SiteMapSetup() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label htmlFor="floorName">Area Name *</Label>
               <Input
@@ -749,7 +796,7 @@ export function SiteMapSetup() {
           setSensorY("100");
         }
       }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingSensor ? "Edit Sensor" : "Add New Sensor"}</DialogTitle>
             <DialogDescription>
@@ -757,7 +804,7 @@ export function SiteMapSetup() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
             <div className="space-y-2">
               <Label htmlFor="sensorName">Sensor Name *</Label>
               <Input
