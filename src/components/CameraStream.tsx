@@ -27,8 +27,22 @@ export function CameraStream({
   className = "",
 }: CameraStreamProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [streamStatus, setStreamStatus] = useState<"loading" | "playing" | "error" | "unavailable">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
+  const [isMJPEG, setIsMJPEG] = useState(false);
+
+  // Construct stream URL with authentication
+  const getStreamUrl = () => {
+    if (!cameraIp) return "";
+    
+    if (cameraUsername && cameraPassword) {
+      return `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
+    }
+    return `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
+  };
+
+  const streamUrl = getStreamUrl();
 
   useEffect(() => {
     if (!cameraIp) {
@@ -38,7 +52,23 @@ export function CameraStream({
 
     setStreamStatus("loading");
 
-    // Wait for video element to be mounted
+    // Detect if it's likely an MJPEG stream
+    const pathLower = cameraStreamPath.toLowerCase();
+    const isMJPEGStream = pathLower.includes('mjpeg') || 
+                           pathLower.includes('mjpg') ||
+                           pathLower.includes('video') ||
+                           pathLower.includes('.jpg') ||
+                           pathLower.includes('.jpeg');
+
+    // If it's MJPEG, use img tag
+    if (isMJPEGStream) {
+      console.log("Detected MJPEG stream, using <img> tag");
+      setIsMJPEG(true);
+      setStreamStatus("playing");
+      return;
+    }
+
+    // For video streams, wait for video element to be mounted
     const setupStream = () => {
       const video = videoRef.current;
       
@@ -48,10 +78,6 @@ export function CameraStream({
         return () => clearTimeout(timeout);
       }
 
-      // Construct the stream URL from the camera IP and path
-      // Since the stream already works in browser, we'll try multiple common formats
-      const streamUrl = `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
-      
       console.log("Attempting to connect to camera stream:", {
         url: streamUrl,
         ip: cameraIp,
@@ -60,17 +86,8 @@ export function CameraStream({
       });
 
       // Try to load the stream directly
-      // This handles: HLS (.m3u8), MP4, WebM, or direct HTTP streams
       const tryDirectStream = async () => {
         try {
-          // Double-check video element still exists
-          if (!videoRef.current) {
-            console.error("Video element lost during setup");
-            return;
-          }
-
-          const currentVideo = videoRef.current;
-
           // Check if it's an HLS stream (.m3u8)
           if (cameraStreamPath.includes('.m3u8') || cameraStreamPath.includes('m3u8')) {
             // Try to use HLS.js for better browser support
@@ -83,10 +100,10 @@ export function CameraStream({
                 });
                 
                 hls.loadSource(streamUrl);
-                hls.attachMedia(currentVideo);
+                hls.attachMedia(video);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                  currentVideo.play().then(() => {
+                  video.play().then(() => {
                     setStreamStatus("playing");
                   }).catch((err) => {
                     console.error("Play error:", err);
@@ -107,9 +124,9 @@ export function CameraStream({
               }
             }
             // Native HLS support (Safari)
-            else if (currentVideo.canPlayType('application/vnd.apple.mpegurl')) {
-              currentVideo.src = streamUrl;
-              currentVideo.play().then(() => {
+            else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+              video.src = streamUrl;
+              video.play().then(() => {
                 setStreamStatus("playing");
               }).catch((err) => {
                 console.error("Play error:", err);
@@ -120,24 +137,17 @@ export function CameraStream({
             }
           }
           
-          // For other formats (MP4, WebM, MJPEG stream, etc.)
-          // Add authentication if provided
-          let finalUrl = streamUrl;
-          if (cameraUsername && cameraPassword) {
-            // For basic auth, embed credentials in URL
-            finalUrl = `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
-          }
+          // For other formats (MP4, WebM, etc.)
+          video.src = streamUrl;
           
-          // Try setting the source directly
-          currentVideo.src = finalUrl;
-          
-          currentVideo.play().then(() => {
+          video.play().then(() => {
             setStreamStatus("playing");
           }).catch((err) => {
             console.error("Play error:", err);
-            // If direct play fails, it might be MJPEG or needs special handling
-            setStreamStatus("error");
-            setErrorMessage(`Cannot play stream. Error: ${err.message}`);
+            // Try MJPEG as fallback
+            console.log("Video playback failed, trying MJPEG fallback...");
+            setIsMJPEG(true);
+            setStreamStatus("playing");
           });
           
         } catch (error) {
@@ -153,37 +163,61 @@ export function CameraStream({
     const cleanup = setupStream();
 
     return () => {
-      // Cleanup
       if (cleanup) cleanup();
       if (videoRef.current) {
         videoRef.current.src = "";
         videoRef.current.load();
       }
     };
-  }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath]);
+  }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath, streamUrl]);
 
-  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    console.error("Video playback error:", e);
-    setStreamStatus("error");
-    setErrorMessage("Failed to play video stream");
+  const handleVideoError = () => {
+    console.log("Video error, switching to MJPEG mode...");
+    setIsMJPEG(true);
+    setStreamStatus("playing");
   };
 
   const handleVideoPlay = () => {
     setStreamStatus("playing");
   };
 
+  const handleImgLoad = () => {
+    console.log("MJPEG stream loaded successfully");
+    setStreamStatus("playing");
+  };
+
+  const handleImgError = () => {
+    console.error("MJPEG stream load error");
+    setStreamStatus("error");
+    setErrorMessage("Failed to load MJPEG stream. Check URL and credentials.");
+  };
+
   return (
-    <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
-      {/* Always render video element so ref is set */}
-      <video
-        ref={videoRef}
-        className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
-        autoPlay
-        playsInline
-        muted
-        onError={handleVideoError}
-        onPlay={handleVideoPlay}
-      />
+    <div className={`relative w-full h-full bg-black ${className}`}>
+      {/* Video element for HLS, MP4, WebM, etc. */}
+      {!isMJPEG && (
+        <video
+          ref={videoRef}
+          className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
+          autoPlay
+          playsInline
+          muted
+          onError={handleVideoError}
+          onPlay={handleVideoPlay}
+        />
+      )}
+
+      {/* Image element for MJPEG streams */}
+      {isMJPEG && streamUrl && (
+        <img
+          ref={imgRef}
+          src={streamUrl}
+          alt="Camera MJPEG Stream"
+          className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
+          onLoad={handleImgLoad}
+          onError={handleImgError}
+        />
+      )}
 
       {/* Overlay status screens */}
       {streamStatus === "unavailable" && (
@@ -227,7 +261,7 @@ export function CameraStream({
                   <p>Port: {cameraPort}</p>
                   <p>Path: {cameraStreamPath}</p>
                   <p>Auth: {cameraUsername ? "✓ Configured" : "✗ Not configured"}</p>
-                  <p className="text-yellow-500 mt-2">Stream URL: http://{cameraIp}:{cameraPort}{cameraStreamPath}</p>
+                  <p className="text-yellow-500 mt-2">Stream URL: {streamUrl}</p>
                 </div>
               </CardContent>
             </Card>
