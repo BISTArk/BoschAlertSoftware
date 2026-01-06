@@ -31,112 +31,133 @@ export function CameraStream({
   const [errorMessage, setErrorMessage] = useState<string>("");
 
   useEffect(() => {
-    if (!cameraIp || !videoRef.current) {
+    if (!cameraIp) {
       setStreamStatus("unavailable");
       return;
     }
 
-    const video = videoRef.current;
-    setStreamStatus("loading");
+    // Wait for video element to be mounted
+    const setupStream = () => {
+      const video = videoRef.current;
+      
+      if (!video) {
+        // Retry after a short delay if video element not ready
+        const timeout = setTimeout(setupStream, 100);
+        return () => clearTimeout(timeout);
+      }
 
-    // Construct the stream URL from the camera IP and path
-    // Since the stream already works in browser, we'll try multiple common formats
-    const streamUrl = `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
-    
-    console.log("Attempting to connect to camera stream:", {
-      url: streamUrl,
-      ip: cameraIp,
-      port: cameraPort,
-      path: cameraStreamPath,
-    });
+      setStreamStatus("loading");
 
-    // Try to load the stream directly
-    // This handles: HLS (.m3u8), MP4, WebM, or direct HTTP streams
-    const tryDirectStream = async () => {
-      try {
-        // Check if it's an HLS stream (.m3u8)
-        if (cameraStreamPath.includes('.m3u8') || cameraStreamPath.includes('m3u8')) {
-          // Try to use HLS.js for better browser support
-          if ('Hls' in window) {
-            const Hls = (window as any).Hls;
-            if (Hls.isSupported()) {
-              const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: true,
-              });
-              
-              hls.loadSource(streamUrl);
-              hls.attachMedia(video);
-              
-              hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().then(() => {
-                  setStreamStatus("playing");
-                }).catch((err) => {
-                  console.error("Play error:", err);
-                  setStreamStatus("error");
-                  setErrorMessage("Failed to play stream");
-                });
-              });
-              
-              hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
-                console.error("HLS error:", data);
-                if (data.fatal) {
-                  setStreamStatus("error");
-                  setErrorMessage(data.details || "HLS playback error");
-                }
-              });
-              
-              return () => hls.destroy();
-            }
-          }
-          // Native HLS support (Safari)
-          else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.play().then(() => {
-              setStreamStatus("playing");
-            }).catch((err) => {
-              console.error("Play error:", err);
-              setStreamStatus("error");
-              setErrorMessage("Failed to play HLS stream");
-            });
+      // Construct the stream URL from the camera IP and path
+      // Since the stream already works in browser, we'll try multiple common formats
+      const streamUrl = `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
+      
+      console.log("Attempting to connect to camera stream:", {
+        url: streamUrl,
+        ip: cameraIp,
+        port: cameraPort,
+        path: cameraStreamPath,
+      });
+
+      // Try to load the stream directly
+      // This handles: HLS (.m3u8), MP4, WebM, or direct HTTP streams
+      const tryDirectStream = async () => {
+        try {
+          // Double-check video element still exists
+          if (!videoRef.current) {
+            console.error("Video element lost during setup");
             return;
           }
-        }
-        
-        // For other formats (MP4, WebM, MJPEG stream, etc.)
-        // Try setting the source directly
-        video.src = streamUrl;
-        
-        // Add authentication if provided
-        if (cameraUsername && cameraPassword) {
-          // For basic auth, the browser will prompt or we can try embedding in URL
-          const authUrl = `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
-          video.src = authUrl;
-        }
-        
-        video.play().then(() => {
-          setStreamStatus("playing");
-        }).catch((err) => {
-          console.error("Play error:", err);
-          // If direct play fails, it might be MJPEG or needs special handling
+
+          const currentVideo = videoRef.current;
+
+          // Check if it's an HLS stream (.m3u8)
+          if (cameraStreamPath.includes('.m3u8') || cameraStreamPath.includes('m3u8')) {
+            // Try to use HLS.js for better browser support
+            if ('Hls' in window) {
+              const Hls = (window as any).Hls;
+              if (Hls.isSupported()) {
+                const hls = new Hls({
+                  enableWorker: true,
+                  lowLatencyMode: true,
+                });
+                
+                hls.loadSource(streamUrl);
+                hls.attachMedia(currentVideo);
+                
+                hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                  currentVideo.play().then(() => {
+                    setStreamStatus("playing");
+                  }).catch((err) => {
+                    console.error("Play error:", err);
+                    setStreamStatus("error");
+                    setErrorMessage("Failed to play stream");
+                  });
+                });
+                
+                hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
+                  console.error("HLS error:", data);
+                  if (data.fatal) {
+                    setStreamStatus("error");
+                    setErrorMessage(data.details || "HLS playback error");
+                  }
+                });
+                
+                return () => hls.destroy();
+              }
+            }
+            // Native HLS support (Safari)
+            else if (currentVideo.canPlayType('application/vnd.apple.mpegurl')) {
+              currentVideo.src = streamUrl;
+              currentVideo.play().then(() => {
+                setStreamStatus("playing");
+              }).catch((err) => {
+                console.error("Play error:", err);
+                setStreamStatus("error");
+                setErrorMessage("Failed to play HLS stream");
+              });
+              return;
+            }
+          }
+          
+          // For other formats (MP4, WebM, MJPEG stream, etc.)
+          // Add authentication if provided
+          let finalUrl = streamUrl;
+          if (cameraUsername && cameraPassword) {
+            // For basic auth, embed credentials in URL
+            finalUrl = `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
+          }
+          
+          // Try setting the source directly
+          currentVideo.src = finalUrl;
+          
+          currentVideo.play().then(() => {
+            setStreamStatus("playing");
+          }).catch((err) => {
+            console.error("Play error:", err);
+            // If direct play fails, it might be MJPEG or needs special handling
+            setStreamStatus("error");
+            setErrorMessage(`Cannot play stream. Error: ${err.message}`);
+          });
+          
+        } catch (error) {
+          console.error("Stream setup error:", error);
           setStreamStatus("error");
-          setErrorMessage(`Cannot play stream. Error: ${err.message}`);
-        });
-        
-      } catch (error) {
-        console.error("Stream setup error:", error);
-        setStreamStatus("error");
-        setErrorMessage(error instanceof Error ? error.message : "Failed to setup stream");
-      }
+          setErrorMessage(error instanceof Error ? error.message : "Failed to setup stream");
+        }
+      };
+
+      tryDirectStream();
     };
 
-    tryDirectStream();
+    const cleanup = setupStream();
 
     return () => {
       // Cleanup
-      if (video) {
-        video.src = "";
-        video.load();
+      if (cleanup) cleanup();
+      if (videoRef.current) {
+        videoRef.current.src = "";
+        videoRef.current.load();
       }
     };
   }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath]);
