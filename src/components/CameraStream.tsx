@@ -35,70 +35,110 @@ export function CameraStream({
       setStreamStatus("unavailable");
       return;
     }
-    
-    // Construct RTSP URL
-    // Format: rtsp://username:password@ip:port/path
-    let rtspUrl = "rtsp://";
-    if (cameraUsername && cameraPassword) {
-      rtspUrl += `${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@`;
-    }
-    rtspUrl += `${cameraIp}:${cameraPort}${cameraStreamPath}`;
 
+    const video = videoRef.current;
+    setStreamStatus("loading");
+
+    // Construct the stream URL from the camera IP and path
+    // Since the stream already works in browser, we'll try multiple common formats
+    const streamUrl = `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
+    
     console.log("Attempting to connect to camera stream:", {
+      url: streamUrl,
       ip: cameraIp,
       port: cameraPort,
       path: cameraStreamPath,
-      // Don't log credentials for security
     });
 
-    // Note: Direct RTSP streaming in browsers requires a proxy/transcoding server
-    // This is a placeholder for the actual implementation
-    // You'll need to either:
-    // 1. Use a WebRTC gateway like mediamtx, RTSPtoWeb, or similar
-    // 2. Use HLS/DASH transcoding
-    // 3. Use a commercial service that handles RTSP-to-Web conversion
+    // Try to load the stream directly
+    // This handles: HLS (.m3u8), MP4, WebM, or direct HTTP streams
+    const tryDirectStream = async () => {
+      try {
+        // Check if it's an HLS stream (.m3u8)
+        if (cameraStreamPath.includes('.m3u8') || cameraStreamPath.includes('m3u8')) {
+          // Try to use HLS.js for better browser support
+          if ('Hls' in window) {
+            const Hls = (window as any).Hls;
+            if (Hls.isSupported()) {
+              const hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+              });
+              
+              hls.loadSource(streamUrl);
+              hls.attachMedia(video);
+              
+              hls.on(Hls.Events.MANIFEST_PARSED, () => {
+                video.play().then(() => {
+                  setStreamStatus("playing");
+                }).catch((err) => {
+                  console.error("Play error:", err);
+                  setStreamStatus("error");
+                  setErrorMessage("Failed to play stream");
+                });
+              });
+              
+              hls.on(Hls.Events.ERROR, (_event: any, data: any) => {
+                console.error("HLS error:", data);
+                if (data.fatal) {
+                  setStreamStatus("error");
+                  setErrorMessage(data.details || "HLS playback error");
+                }
+              });
+              
+              return () => hls.destroy();
+            }
+          }
+          // Native HLS support (Safari)
+          else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = streamUrl;
+            video.play().then(() => {
+              setStreamStatus("playing");
+            }).catch((err) => {
+              console.error("Play error:", err);
+              setStreamStatus("error");
+              setErrorMessage("Failed to play HLS stream");
+            });
+            return;
+          }
+        }
+        
+        // For other formats (MP4, WebM, MJPEG stream, etc.)
+        // Try setting the source directly
+        video.src = streamUrl;
+        
+        // Add authentication if provided
+        if (cameraUsername && cameraPassword) {
+          // For basic auth, the browser will prompt or we can try embedding in URL
+          const authUrl = `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
+          video.src = authUrl;
+        }
+        
+        video.play().then(() => {
+          setStreamStatus("playing");
+        }).catch((err) => {
+          console.error("Play error:", err);
+          // If direct play fails, it might be MJPEG or needs special handling
+          setStreamStatus("error");
+          setErrorMessage(`Cannot play stream. Error: ${err.message}`);
+        });
+        
+      } catch (error) {
+        console.error("Stream setup error:", error);
+        setStreamStatus("error");
+        setErrorMessage(error instanceof Error ? error.message : "Failed to setup stream");
+      }
+    };
 
-    // For now, we'll set up the video element and show instructions
-    setStreamStatus("error");
-    setErrorMessage(
-      "Direct RTSP streaming requires a media server. Please set up a WebRTC/HLS gateway."
-    );
+    tryDirectStream();
 
-    // Example with HLS (if you have a transcoding server):
-    // if (Hls.isSupported()) {
-    //   const hls = new Hls();
-    //   const hlsUrl = `http://your-transcoding-server/stream/${cameraIp}`;
-    //   hls.loadSource(hlsUrl);
-    //   hls.attachMedia(videoRef.current);
-    //   hls.on(Hls.Events.MANIFEST_PARSED, () => {
-    //     videoRef.current?.play();
-    //     setStreamStatus("playing");
-    //   });
-    //   hls.on(Hls.Events.ERROR, (event, data) => {
-    //     console.error("HLS error:", data);
-    //     setStreamStatus("error");
-    //     setErrorMessage(data.details);
-    //   });
-    //   return () => hls.destroy();
-    // }
-
-    // Example with WebRTC (using mediamtx or similar):
-    // const pc = new RTCPeerConnection();
-    // pc.addTransceiver('video', { direction: 'recvonly' });
-    // pc.addTransceiver('audio', { direction: 'recvonly' });
-    // 
-    // pc.ontrack = (event) => {
-    //   if (videoRef.current) {
-    //     videoRef.current.srcObject = event.streams[0];
-    //     setStreamStatus("playing");
-    //   }
-    // };
-    //
-    // // Offer/Answer exchange with your WebRTC signaling server
-    // const offer = await pc.createOffer();
-    // await pc.setLocalDescription(offer);
-    // // Send offer to server, receive answer, set remote description
-    
+    return () => {
+      // Cleanup
+      if (video) {
+        video.src = "";
+        video.load();
+      }
+    };
   }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath]);
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
@@ -162,11 +202,12 @@ export function CameraStream({
                   <p>Port: {cameraPort}</p>
                   <p>Path: {cameraStreamPath}</p>
                   <p>Auth: {cameraUsername ? "✓ Configured" : "✗ Not configured"}</p>
+                  <p className="text-yellow-500 mt-2">Stream URL: http://{cameraIp}:{cameraPort}{cameraStreamPath}</p>
                 </div>
               </CardContent>
             </Card>
             <p className="text-xs text-muted-foreground mt-3">
-              Set up a media server like <strong>mediamtx</strong>, <strong>RTSPtoWeb</strong>, or <strong>go2rtc</strong> to stream RTSP/ONVIF cameras to the browser.
+              Verify the stream URL is accessible and returns a valid video format (HLS, MP4, MJPEG, etc.)
             </p>
           </div>
         </div>
