@@ -89,26 +89,71 @@ export function CameraStream({
                            pathLower.includes('video.cgi') ||
                            (!isSnapshotUrl && pathLower.includes('.jpeg'));
 
-    // If it's a snapshot URL, use img tag with periodic refresh
+    // If it's a snapshot URL, use fetch with blob URL to bypass img src restrictions
     if (isSnapshotUrl) {
-      const initialUrl = getStreamUrl(true);
-      console.log("Detected snapshot URL, using <img> tag with refresh");
-      console.log("Snapshot URL:", initialUrl);
+      console.log("Detected snapshot URL, using fetch + blob approach");
       setIsMJPEG(true);
       setIsSnapshot(true);
-      setStreamStatus("playing");
+      setStreamStatus("loading");
+      
+      const fetchSnapshot = async () => {
+        try {
+          const protocol = cameraPort === 443 ? 'https' : 'http';
+          const portStr = (protocol === 'https' && cameraPort !== 443) || (protocol === 'http' && cameraPort !== 80) 
+            ? `:${cameraPort}` 
+            : '';
+          const baseUrl = `${protocol}://${cameraIp}${portStr}${cameraStreamPath}`;
+          const separator = cameraStreamPath.includes('?') ? '&' : '?';
+          const url = `${baseUrl}${separator}rnd=${Date.now()}`;
+          
+          console.log("Fetching snapshot:", url);
+          
+          const headers: HeadersInit = {};
+          if (cameraUsername && cameraPassword) {
+            const auth = btoa(`${cameraUsername}:${cameraPassword}`);
+            headers['Authorization'] = `Basic ${auth}`;
+          }
+          
+          const response = await fetch(url, {
+            method: 'GET',
+            headers,
+            mode: 'cors',
+            credentials: 'include',
+          });
+          
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+          
+          const blob = await response.blob();
+          const blobUrl = URL.createObjectURL(blob);
+          
+          // Revoke previous blob URL to prevent memory leaks
+          if (snapshotUrl && snapshotUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(snapshotUrl);
+          }
+          
+          setSnapshotUrl(blobUrl);
+          setStreamStatus("playing");
+        } catch (error) {
+          console.error("Snapshot fetch error:", error);
+          setStreamStatus("error");
+          setErrorMessage(error instanceof Error ? error.message : "Failed to fetch snapshot");
+        }
+      };
+      
+      // Initial fetch
+      fetchSnapshot();
       
       // Set up periodic refresh for snapshots
-      const refreshInterval = setInterval(() => {
-        const newUrl = getStreamUrl(true);
-        console.log("Refreshing snapshot:", newUrl);
-        setSnapshotUrl(newUrl);
-      }, 100); // Refresh every 100ms for smooth playback
+      const refreshInterval = setInterval(fetchSnapshot, 100);
       
-      // Initial load
-      setSnapshotUrl(initialUrl);
-      
-      return () => clearInterval(refreshInterval);
+      return () => {
+        clearInterval(refreshInterval);
+        if (snapshotUrl && snapshotUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(snapshotUrl);
+        }
+      };
     }
     
     // If it's MJPEG continuous stream, use img tag
