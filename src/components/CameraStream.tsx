@@ -91,38 +91,31 @@ export function CameraStream({
 
     // If it's a snapshot URL, use fetch with blob URL to bypass img src restrictions
     if (isSnapshotUrl) {
-      console.log("Detected snapshot URL, using fetch + blob approach");
+      console.log("Detected snapshot URL, using proxy server");
       setIsMJPEG(true);
       setIsSnapshot(true);
       setStreamStatus("loading");
       
       const fetchSnapshot = async () => {
         try {
-          const protocol = cameraPort === 443 ? 'https' : 'http';
-          const portStr = (protocol === 'https' && cameraPort !== 443) || (protocol === 'http' && cameraPort !== 80) 
-            ? `:${cameraPort}` 
-            : '';
-          const baseUrl = `${protocol}://${cameraIp}${portStr}${cameraStreamPath}`;
-          const separator = cameraStreamPath.includes('?') ? '&' : '?';
-          const url = `${baseUrl}${separator}rnd=${Date.now()}`;
+          // Use local proxy server to bypass CORS
+          const proxyUrl = new URL('http://localhost:3001/camera-snapshot');
+          proxyUrl.searchParams.set('ip', cameraIp);
+          proxyUrl.searchParams.set('port', cameraPort.toString());
+          proxyUrl.searchParams.set('path', cameraStreamPath);
+          if (cameraUsername) proxyUrl.searchParams.set('username', cameraUsername);
+          if (cameraPassword) proxyUrl.searchParams.set('password', cameraPassword);
           
-          console.log("Fetching snapshot:", url);
+          console.log("Fetching via proxy:", proxyUrl.toString());
           
-          const headers: HeadersInit = {};
-          if (cameraUsername && cameraPassword) {
-            const auth = btoa(`${cameraUsername}:${cameraPassword}`);
-            headers['Authorization'] = `Basic ${auth}`;
-          }
-          
-          const response = await fetch(url, {
+          const response = await fetch(proxyUrl.toString(), {
             method: 'GET',
-            headers,
-            mode: 'cors',
-            credentials: 'include',
+            cache: 'no-store',
           });
           
           if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const errorData = await response.json().catch(() => ({ error: response.statusText }));
+            throw new Error(errorData.error || `HTTP ${response.status}`);
           }
           
           const blob = await response.blob();
