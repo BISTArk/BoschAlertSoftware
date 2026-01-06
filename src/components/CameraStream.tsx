@@ -91,18 +91,22 @@ export function CameraStream({
 
     // If it's a snapshot URL, use img tag with periodic refresh
     if (isSnapshotUrl) {
+      const initialUrl = getStreamUrl(true);
       console.log("Detected snapshot URL, using <img> tag with refresh");
+      console.log("Snapshot URL:", initialUrl);
       setIsMJPEG(true);
       setIsSnapshot(true);
       setStreamStatus("playing");
       
       // Set up periodic refresh for snapshots
       const refreshInterval = setInterval(() => {
-        setSnapshotUrl(getStreamUrl(true));
+        const newUrl = getStreamUrl(true);
+        console.log("Refreshing snapshot:", newUrl);
+        setSnapshotUrl(newUrl);
       }, 100); // Refresh every 100ms for smooth playback
       
       // Initial load
-      setSnapshotUrl(getStreamUrl(true));
+      setSnapshotUrl(initialUrl);
       
       return () => clearInterval(refreshInterval);
     }
@@ -234,10 +238,12 @@ export function CameraStream({
     setStreamStatus("playing");
   };
 
-  const handleImgError = () => {
+  const handleImgError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     console.error("MJPEG stream load error");
+    console.error("Failed URL:", isSnapshot ? snapshotUrl : streamUrl);
+    console.error("Error event:", e);
     setStreamStatus("error");
-    setErrorMessage("Failed to load MJPEG stream. Check URL and credentials.");
+    setErrorMessage("Failed to load camera image. Check browser console for details.");
   };
 
   return (
@@ -256,7 +262,7 @@ export function CameraStream({
       )}
 
       {/* Image element for MJPEG streams and snapshots */}
-      {isMJPEG && (
+      {isMJPEG && (isSnapshot ? snapshotUrl : streamUrl) && (
         <img
           ref={imgRef}
           src={isSnapshot ? snapshotUrl : streamUrl}
@@ -264,7 +270,7 @@ export function CameraStream({
           className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
           onLoad={handleImgLoad}
           onError={handleImgError}
-          crossOrigin="anonymous"
+          referrerPolicy="no-referrer"
         />
       )}
 
