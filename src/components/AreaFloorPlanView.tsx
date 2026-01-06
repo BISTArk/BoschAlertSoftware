@@ -221,10 +221,8 @@ export function AreaFloorPlanView({
     // Load and draw floor plan image
     const img = new Image();
     img.src = areaData.floorPlanUrl;
-    console.log("AreaFloorPlanView: Attempting to load floor plan from:", areaData.floorPlanUrl);
     
     img.onload = () => {
-      console.log("AreaFloorPlanView: Floor plan image loaded successfully.");
       // Draw the floor plan image with reduced opacity for better sensor visibility
       ctx.globalAlpha = 0.5;
       ctx.drawImage(img, 0, 0, width, height);
