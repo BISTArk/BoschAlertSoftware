@@ -36,6 +36,8 @@ export function CameraStream({
       return;
     }
 
+    setStreamStatus("loading");
+
     // Wait for video element to be mounted
     const setupStream = () => {
       const video = videoRef.current;
@@ -45,8 +47,6 @@ export function CameraStream({
         const timeout = setTimeout(setupStream, 100);
         return () => clearTimeout(timeout);
       }
-
-      setStreamStatus("loading");
 
       // Construct the stream URL from the camera IP and path
       // Since the stream already works in browser, we'll try multiple common formats
@@ -172,10 +172,22 @@ export function CameraStream({
     setStreamStatus("playing");
   };
 
-  if (streamStatus === "unavailable") {
-    return (
-      <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center">
+  return (
+    <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
+      {/* Always render video element so ref is set */}
+      <video
+        ref={videoRef}
+        className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
+        autoPlay
+        playsInline
+        muted
+        onError={handleVideoError}
+        onPlay={handleVideoPlay}
+      />
+
+      {/* Overlay status screens */}
+      {streamStatus === "unavailable" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
           <div className="text-center">
             <Video className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
             <p className="text-sm text-muted-foreground">Camera Not Configured</p>
@@ -189,31 +201,23 @@ export function CameraStream({
             </Badge>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  if (streamStatus === "loading") {
-    return (
-      <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center">
+      {streamStatus === "loading" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
           <div className="text-center">
             <Loader2 className="h-12 w-12 mx-auto mb-2 text-muted-foreground animate-spin" />
             <p className="text-sm text-muted-foreground">Connecting to camera...</p>
             <p className="text-xs text-muted-foreground mt-1">{cameraIp}:{cameraPort}</p>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  if (streamStatus === "error") {
-    return (
-      <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
-        <div className="absolute inset-0 flex items-center justify-center">
+      {streamStatus === "error" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black">
           <div className="text-center max-w-md p-4">
             <AlertCircle className="h-12 w-12 mx-auto mb-2 text-yellow-500" />
-            <p className="text-sm font-semibold text-white mb-1">Camera Stream Setup Required</p>
+            <p className="text-sm font-semibold text-white mb-1">Camera Stream Error</p>
             <p className="text-xs text-muted-foreground mb-3">{errorMessage}</p>
             <Card className="bg-muted/10">
               <CardContent className="p-3 text-left">
@@ -232,21 +236,9 @@ export function CameraStream({
             </p>
           </div>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className={`relative aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
-      <video
-        ref={videoRef}
-        className="w-full h-full object-cover"
-        autoPlay
-        playsInline
-        muted
-        onError={handleVideoError}
-        onPlay={handleVideoPlay}
-      />
+      {/* Live badge when playing */}
       {streamStatus === "playing" && (
         <div className="absolute top-2 right-2">
           <Badge variant="destructive" className="bg-red-600">
@@ -255,6 +247,8 @@ export function CameraStream({
           </Badge>
         </div>
       )}
+      
+      {/* Camera info badge */}
       <div className="absolute bottom-2 left-2">
         <Badge variant="outline" className="bg-black/50 backdrop-blur-sm">
           Account {accountNumber}
