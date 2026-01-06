@@ -31,15 +31,40 @@ export function CameraStream({
   const [streamStatus, setStreamStatus] = useState<"loading" | "playing" | "error" | "unavailable">("loading");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [isMJPEG, setIsMJPEG] = useState(false);
+  const [isSnapshot, setIsSnapshot] = useState(false);
+  const [snapshotUrl, setSnapshotUrl] = useState<string>("");
 
   // Construct stream URL with authentication
-  const getStreamUrl = () => {
+  const getStreamUrl = (includeTimestamp = false) => {
     if (!cameraIp) return "";
     
-    if (cameraUsername && cameraPassword) {
-      return `http://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${cameraIp}:${cameraPort}${cameraStreamPath}`;
+    // Detect if it's HTTPS (common ports: 443, or if path starts with https)
+    const protocol = cameraPort === 443 || cameraStreamPath.toLowerCase().includes('https') ? 'https' : 'http';
+    
+    // Build base URL
+    let baseUrl = `${protocol}://${cameraIp}`;
+    
+    // Only add port if it's not the default for the protocol
+    if ((protocol === 'https' && cameraPort !== 443) || (protocol === 'http' && cameraPort !== 80)) {
+      baseUrl += `:${cameraPort}`;
     }
-    return `http://${cameraIp}:${cameraPort}${cameraStreamPath}`;
+    
+    // Add path
+    let fullUrl = baseUrl + cameraStreamPath;
+    
+    // Add timestamp for snapshot refreshing
+    if (includeTimestamp) {
+      const separator = cameraStreamPath.includes('?') ? '&' : '?';
+      fullUrl += `${separator}rnd=${Date.now()}`;
+    }
+    
+    // Add authentication if provided (only for HTTP Basic Auth)
+    if (cameraUsername && cameraPassword && !fullUrl.includes('@')) {
+      const urlParts = fullUrl.split('://');
+      fullUrl = `${urlParts[0]}://${encodeURIComponent(cameraUsername)}:${encodeURIComponent(cameraPassword)}@${urlParts[1]}`;
+    }
+    
+    return fullUrl;
   };
 
   const streamUrl = getStreamUrl();
@@ -52,18 +77,41 @@ export function CameraStream({
 
     setStreamStatus("loading");
 
-    // Detect if it's likely an MJPEG stream
+    // Detect if it's likely an MJPEG stream or snapshot
     const pathLower = cameraStreamPath.toLowerCase();
+    const isSnapshotUrl = pathLower.includes('snap.jpg') || 
+                          pathLower.includes('snapshot') ||
+                          pathLower.includes('image.jpg') ||
+                          (pathLower.includes('.jpg') && !pathLower.includes('mjpeg'));
+    
     const isMJPEGStream = pathLower.includes('mjpeg') || 
                            pathLower.includes('mjpg') ||
-                           pathLower.includes('video') ||
-                           pathLower.includes('.jpg') ||
-                           pathLower.includes('.jpeg');
+                           pathLower.includes('video.cgi') ||
+                           (!isSnapshotUrl && pathLower.includes('.jpeg'));
 
-    // If it's MJPEG, use img tag
+    // If it's a snapshot URL, use img tag with periodic refresh
+    if (isSnapshotUrl) {
+      console.log("Detected snapshot URL, using <img> tag with refresh");
+      setIsMJPEG(true);
+      setIsSnapshot(true);
+      setStreamStatus("playing");
+      
+      // Set up periodic refresh for snapshots
+      const refreshInterval = setInterval(() => {
+        setSnapshotUrl(getStreamUrl(true));
+      }, 100); // Refresh every 100ms for smooth playback
+      
+      // Initial load
+      setSnapshotUrl(getStreamUrl(true));
+      
+      return () => clearInterval(refreshInterval);
+    }
+    
+    // If it's MJPEG continuous stream, use img tag
     if (isMJPEGStream) {
       console.log("Detected MJPEG stream, using <img> tag");
       setIsMJPEG(true);
+      setIsSnapshot(false);
       setStreamStatus("playing");
       return;
     }
@@ -207,15 +255,16 @@ export function CameraStream({
         />
       )}
 
-      {/* Image element for MJPEG streams */}
-      {isMJPEG && streamUrl && (
+      {/* Image element for MJPEG streams and snapshots */}
+      {isMJPEG && (
         <img
           ref={imgRef}
-          src={streamUrl}
-          alt="Camera MJPEG Stream"
+          src={isSnapshot ? snapshotUrl : streamUrl}
+          alt="Camera Stream"
           className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
           onLoad={handleImgLoad}
           onError={handleImgError}
+          crossOrigin="anonymous"
         />
       )}
 
