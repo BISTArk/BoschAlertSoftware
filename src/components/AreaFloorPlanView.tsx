@@ -86,21 +86,12 @@ export function AreaFloorPlanView({
       return null;
     }
     
-    console.log("AreaFloorPlanView: Query results - dbFloor:", dbFloor, "dbSensors:", dbSensors);
     
     // Use database data only
     if (!dbFloor || dbSensors === undefined) {
-      console.log("AreaFloorPlanView: No floor plan found in database for Account", accountNumber, "Area", areaNumber);
       return null;
     }
 
-    console.log("AreaFloorPlanView: Using database floor plan", {
-      name: dbFloor.name,
-      floorPlanUrl: dbFloor.floorPlanUrl,
-      width: dbFloor.width,
-      height: dbFloor.height,
-      sensorCount: dbSensors.length
-    });
     
     // Convert database sensors to expected format
     const sensorsMap: Record<string, any> = {};
