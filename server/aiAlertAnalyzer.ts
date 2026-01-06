@@ -31,6 +31,7 @@ export type AlertAction = typeof ALERT_ACTIONS[number];
 
 // Schema for AI response
 const AlertAnalysisSchema = z.object({
+  // English fields
   summary: z.string().describe("A concise 2-3 sentence summary of the alert situation, including context and severity"),
   riskScore: z.number().min(0).max(100).describe("Risk score from 0-100, where 0 is no risk and 100 is critical emergency"),
   riskLevel: z.enum(["low", "medium", "high", "critical"]).describe("Categorical risk level"),
@@ -38,6 +39,12 @@ const AlertAnalysisSchema = z.object({
   reasoning: z.string().describe("Brief explanation of why these actions are recommended"),
   estimatedResponseTime: z.string().describe("Suggested response time (e.g., 'immediate', '5 minutes', '15 minutes', '1 hour')"),
   additionalContext: z.string().describe("Any additional context or considerations (use 'None' if not applicable)"),
+  
+  // Arabic translations
+  summaryAr: z.string().describe("Arabic translation of the summary"),
+  reasoningAr: z.string().describe("Arabic translation of the reasoning"),
+  estimatedResponseTimeAr: z.string().describe("Arabic translation of the estimated response time"),
+  additionalContextAr: z.string().describe("Arabic translation of the additional context"),
 });
 
 export type AlertAnalysis = z.infer<typeof AlertAnalysisSchema>;
@@ -205,11 +212,18 @@ function buildAnalysisPrompt(context: AlertContext): string {
 
   prompt += `\n\n**YOUR TASK:**
 Analyze this security alert and provide:
-1. A clear, actionable summary for security personnel
+1. A clear, actionable summary for security personnel (in English, with markdown formatting)
 2. An accurate risk score (0-100) based on severity, context, and patterns
 3. The top 1-5 recommended actions from the available action list
-4. Reasoning for your recommendations
-5. Suggested response time
+4. Reasoning for your recommendations (in English, with markdown formatting)
+5. Suggested response time (in English)
+6. Arabic translations of all text fields (summary, reasoning, response time, and additional context, with markdown formatting)
+
+**FORMATTING INSTRUCTIONS:**
+- Use **bold** for important terms, locations, and critical information
+- Use *italic* for emphasis or context
+- Use bullet points (- or •) for lists when appropriate
+- Keep formatting natural and enhance readability
 
 **AVAILABLE ACTIONS:**
 ${ALERT_ACTIONS.join(', ')}
@@ -221,7 +235,16 @@ Consider:
 - Does the location and sensor data tell a story? (e.g., "smoke detector in zone 1, then fire alarm in zone 2, then zone 3 - fire is spreading")
 - What is the appropriate response based on the event type, time of day, and location?
 - Should multiple teams be dispatched or is remote verification sufficient?
-- Build a narrative: What is actually happening based on all the evidence?`;
+- Build a narrative: What is actually happening based on all the evidence?
+
+**IMPORTANT - ARABIC TRANSLATION:**
+Provide accurate Arabic translations for:
+- summaryAr: Full Arabic translation of your English summary (with markdown formatting)
+- reasoningAr: Full Arabic translation of your reasoning (with markdown formatting)
+- estimatedResponseTimeAr: Arabic translation of the response time (e.g., "فوري" for immediate, "5 دقائق" for 5 minutes)
+- additionalContextAr: Arabic translation of additional context (use "لا يوجد" if none, with markdown formatting)
+
+Ensure Arabic text is natural, professional, and appropriate for security operations personnel.`;
 
   return prompt;
 }

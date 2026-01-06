@@ -3,14 +3,17 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Clock, Video, Lock, Send, CheckCircle, AlertCircle, Languages } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AlertActions } from "@/components/AlertActions";
 import { AreaFloorPlanView } from "@/components/AreaFloorPlanView";
+import { CameraStream } from "@/components/CameraStream";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { MarkdownText } from "@/components/MarkdownText";
 import {
   Dialog,
   DialogContent,
@@ -43,6 +46,14 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
   // Get all users to find assigned guard
   const allUsers = useQuery(api.auth.getUsers);
   const assignedUser = allUsers?.find((u) => u._id === alert?.assignedTo);
+
+  // Get area/floor data for camera configuration
+  const areaData = useQuery(
+    api.siteMap.getFloorByAccountAndArea,
+    alert?.accountNumber && alert?.areaNumber
+      ? { accountNumber: alert.accountNumber, areaNumber: alert.areaNumber }
+      : "skip"
+  );
 
   // Update timer every second
   useEffect(() => {
@@ -205,84 +216,192 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {hasAIAnalysis ? (
-                <div className="grid grid-cols-2 gap-6">
-                  {/* AI Summary */}
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-1">AI SUMMARY</p>
-                      <div className="space-y-2">
-                        <div>
-                          <p className="text-sm font-medium mb-1">Incident Type</p>
-                          <p className="text-lg font-semibold">
-                            {alert.eventDescription || "Security Alert"}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">AI Risk Score</p>
-                          <div className="flex items-baseline gap-2">
-                            <span className={`text-4xl font-bold ${
-                              aiRiskScore! >= 80 ? "text-red-500" :
-                              aiRiskScore! >= 60 ? "text-orange-500" :
-                              aiRiskScore! >= 40 ? "text-yellow-500" :
-                              "text-green-500"
-                            }`}>{aiRiskScore}</span>
-                            <span className="text-lg text-muted-foreground">/100</span>
-                            <Badge className={`ml-2 ${
-                              aiRiskLevel === "critical" ? "bg-red-600" :
-                              aiRiskLevel === "high" ? "bg-orange-600" :
-                              aiRiskLevel === "medium" ? "bg-yellow-600" :
-                              "bg-green-600"
-                            }`}>{aiRiskLevel?.toUpperCase()}</Badge>
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium mb-1">AI Summary</p>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {aiSummary}
-                          </p>
-                        </div>
-                        {alert.aiReasoning && (
-                          <div>
-                            <p className="text-sm font-medium mb-1">Analysis Reasoning</p>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                              {alert.aiReasoning}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                <Tabs defaultValue="english" className="w-full">
+                  <TabsList className="grid w-full max-w-md grid-cols-2 mb-4">
+                    <TabsTrigger value="english" className="flex items-center gap-2">
+                      <Languages className="h-4 w-4" />
+                      English
+                    </TabsTrigger>
+                    <TabsTrigger value="arabic" className="flex items-center gap-2">
+                      <Languages className="h-4 w-4" />
+                      العربية
+                    </TabsTrigger>
+                  </TabsList>
 
-                  {/* Risk Details */}
-                  <div className="space-y-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground mb-3">RESPONSE TIME</p>
-                      <div className="flex items-center gap-2 mb-4">
-                        <Clock className="h-6 w-6 text-blue-500" />
-                        <span className="text-2xl font-bold">{alert.aiEstimatedResponseTime || "Unknown"}</span>
-                      </div>
-                      {alert.aiAdditionalContext && alert.aiAdditionalContext !== "None" && (
+                  {/* English Content */}
+                  <TabsContent value="english" className="mt-0">
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* AI Summary */}
+                      <div className="space-y-4">
                         <div>
-                          <p className="text-sm font-medium mb-1">Additional Context</p>
-                          <p className="text-sm text-muted-foreground leading-relaxed">
-                            {alert.aiAdditionalContext}
-                          </p>
+                          <p className="text-xs text-muted-foreground mb-1">AI SUMMARY</p>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm font-medium mb-1">Incident Type</p>
+                              <p className="text-lg font-semibold">
+                                {alert.eventDescription || "Security Alert"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">AI Risk Score</p>
+                              <div className="flex items-baseline gap-2">
+                                <span className={`text-4xl font-bold ${
+                                  aiRiskScore! >= 80 ? "text-red-500" :
+                                  aiRiskScore! >= 60 ? "text-orange-500" :
+                                  aiRiskScore! >= 40 ? "text-yellow-500" :
+                                  "text-green-500"
+                                }`}>{aiRiskScore}</span>
+                                <span className="text-lg text-muted-foreground">/100</span>
+                                <Badge className={`ml-2 ${
+                                  aiRiskLevel === "critical" ? "bg-red-600" :
+                                  aiRiskLevel === "high" ? "bg-orange-600" :
+                                  aiRiskLevel === "medium" ? "bg-yellow-600" :
+                                  "bg-green-600"
+                                }`}>{aiRiskLevel?.toUpperCase()}</Badge>
+                              </div>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">AI Summary</p>
+                              <MarkdownText 
+                                text={aiSummary || ""} 
+                                className="text-sm text-muted-foreground leading-relaxed"
+                              />
+                            </div>
+                            {alert.aiReasoning && (
+                              <div>
+                                <p className="text-sm font-medium mb-1">Analysis Reasoning</p>
+                                <MarkdownText 
+                                  text={alert.aiReasoning} 
+                                  className="text-sm text-muted-foreground leading-relaxed"
+                                />
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      <div className="mt-4">
-                        <p className="text-xs text-muted-foreground mb-1">AI Analysis Completed</p>
-                        <p className="text-sm">
-                          {alert.aiAnalyzedAt ? new Date(alert.aiAnalyzedAt).toLocaleString() : "N/A"}
-                        </p>
-                        {alert.aiAnalysisDuration && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Analysis took {(alert.aiAnalysisDuration / 1000).toFixed(2)}s
-                          </p>
-                        )}
+                      </div>
+
+                      {/* Risk Details */}
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-3">RESPONSE TIME</p>
+                          <div className="flex items-center gap-2 mb-4">
+                            <Clock className="h-6 w-6 text-blue-500" />
+                            <span className="text-2xl font-bold">{alert.aiEstimatedResponseTime || "Unknown"}</span>
+                          </div>
+                          {alert.aiAdditionalContext && alert.aiAdditionalContext !== "None" && (
+                            <div>
+                              <p className="text-sm font-medium mb-1">Additional Context</p>
+                              <MarkdownText 
+                                text={alert.aiAdditionalContext} 
+                                className="text-sm text-muted-foreground leading-relaxed"
+                              />
+                            </div>
+                          )}
+                          <div className="mt-4">
+                            <p className="text-xs text-muted-foreground mb-1">AI Analysis Completed</p>
+                            <p className="text-sm">
+                              {alert.aiAnalyzedAt ? new Date(alert.aiAnalyzedAt).toLocaleString() : "N/A"}
+                            </p>
+                            {alert.aiAnalysisDuration && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Analysis took {(alert.aiAnalysisDuration / 1000).toFixed(2)}s
+                              </p>
+                            )}
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                </div>
+                  </TabsContent>
+
+                  {/* Arabic Content */}
+                  <TabsContent value="arabic" className="mt-0" dir="rtl">
+                    <div className="grid grid-cols-2 gap-6">
+                      {/* AI Summary in Arabic */}
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">ملخص الذكاء الاصطناعي</p>
+                          <div className="space-y-2">
+                            <div>
+                              <p className="text-sm font-medium mb-1">نوع الحادث</p>
+                              <p className="text-lg font-semibold">
+                                {alert.eventDescription || "تنبيه أمني"}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium mb-1">درجة المخاطرة بواسطة الذكاء الاصطناعي</p>
+                              <div className="flex items-baseline gap-2" >
+                                <span className={`text-4xl font-bold ${
+                                  aiRiskScore! >= 80 ? "text-red-500" :
+                                  aiRiskScore! >= 60 ? "text-orange-500" :
+                                  aiRiskScore! >= 40 ? "text-yellow-500" :
+                                  "text-green-500"
+                                }`}>{aiRiskScore}</span>
+                                <span className="text-lg text-muted-foreground">/100</span>
+                                <Badge className={`ml-2 ${
+                                  aiRiskLevel === "critical" ? "bg-red-600" :
+                                  aiRiskLevel === "high" ? "bg-orange-600" :
+                                  aiRiskLevel === "medium" ? "bg-yellow-600" :
+                                  "bg-green-600"
+                                }`}>
+                                  {aiRiskLevel === "critical" ? "حرج" :
+                                   aiRiskLevel === "high" ? "عالي" :
+                                   aiRiskLevel === "medium" ? "متوسط" :
+                                   "منخفض"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <div>
+                              <MarkdownText 
+                                text={alert.aiSummaryAr || aiSummary || ""} 
+                                className="text-sm text-muted-foreground leading-relaxed"
+                              />
+                            </div>
+                            {alert.aiReasoningAr && (
+                              <div>
+                                <p className="text-sm font-medium mb-1">تحليل الأسباب</p>
+                                <MarkdownText 
+                                  text={alert.aiReasoningAr} 
+                                  className="text-sm text-muted-foreground leading-relaxed"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Risk Details in Arabic */}
+                      <div className="space-y-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-3">وقت الاستجابة</p>
+                          <div className="flex items-center gap-2 mb-4">
+                            <Clock className="h-6 w-6 text-blue-500" />
+                            <span className="text-2xl font-bold">{alert.aiEstimatedResponseTimeAr || alert.aiEstimatedResponseTime || "غير معروف"}</span>
+                          </div>
+                          {alert.aiAdditionalContextAr && alert.aiAdditionalContextAr !== "لا يوجد" && (
+                            <div>
+                              <p className="text-sm font-medium mb-1">سياق إضافي</p>
+                              <MarkdownText 
+                                text={alert.aiAdditionalContextAr} 
+                                className="text-sm text-muted-foreground leading-relaxed"
+                              />
+                            </div>
+                          )}
+                          <div className="mt-4">
+                            <p className="text-xs text-muted-foreground mb-1">اكتمل التحليل بواسطة الذكاء الاصطناعي</p>
+                            <p className="text-sm">
+                              <span dir="ltr">{alert.aiAnalyzedAt ? new Date(alert.aiAnalyzedAt).toLocaleString() : "N/A"}</span>
+                            </p>
+                            {alert.aiAnalysisDuration && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                استغرق التحليل <span dir="ltr">{(alert.aiAnalysisDuration / 1000).toFixed(2)}s</span>
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </TabsContent>
+                </Tabs>
               ) : (
                 <div className="text-center py-8">
                   <AlertCircle className="h-12 w-12 mx-auto mb-3 text-yellow-500" />
@@ -487,25 +606,23 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
               <CardTitle>Camera Feed</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="relative aspect-4/3 bg-black rounded-lg overflow-hidden">
-                {/* Placeholder for camera feed - replace with actual video feed */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="text-center">
-                    <Video className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">Camera Feed Unavailable</p>
-                    <Badge variant="outline" className="mt-2">
-                      <span className="w-2 h-2 bg-red-500 rounded-full mr-2 animate-pulse" />
-                      Live
-                    </Badge>
-                  </div>
-                </div>
-              </div>
+              <CameraStream
+                cameraIp={areaData?.cameraIp}
+                cameraPort={areaData?.cameraPort}
+                cameraUsername={areaData?.cameraUsername}
+                cameraPassword={areaData?.cameraPassword}
+                cameraStreamPath={areaData?.cameraStreamPath}
+                accountNumber={alert.accountNumber || ""}
+                areaNumber={alert.areaNumber}
+                zoneNumber={alert.zoneNumber}
+              />
               <div className="mt-3 space-y-1">
                 <p className="text-sm font-medium">
                   Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  Camera 1 - Main Entrance
+                  {areaData?.name || `Area ${alert.areaNumber || "N/A"}`}
+                  {areaData?.cameraIp && ` - Camera: ${areaData.cameraIp}`}
                 </p>
               </div>
               <Button variant="destructive" className="w-full mt-3">

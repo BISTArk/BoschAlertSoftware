@@ -84,6 +84,11 @@ export const createFloor = mutation({
     height: v.number(),
     floorPlanStorageId: v.optional(v.string()),
     floorPlanUrl: v.optional(v.string()),
+    cameraIp: v.optional(v.string()),
+    cameraPort: v.optional(v.number()),
+    cameraUsername: v.optional(v.string()),
+    cameraPassword: v.optional(v.string()),
+    cameraStreamPath: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("floors", {
@@ -94,6 +99,11 @@ export const createFloor = mutation({
       floorPlanUrl: args.floorPlanUrl,
       width: args.width,
       height: args.height,
+      cameraIp: args.cameraIp,
+      cameraPort: args.cameraPort,
+      cameraUsername: args.cameraUsername,
+      cameraPassword: args.cameraPassword,
+      cameraStreamPath: args.cameraStreamPath,
       active: true,
       createdAt: Date.now(),
     });
@@ -204,6 +214,11 @@ export const updateFloor = mutation({
     height: v.optional(v.number()),
     floorPlanStorageId: v.optional(v.string()),
     floorPlanUrl: v.optional(v.string()),
+    cameraIp: v.optional(v.string()),
+    cameraPort: v.optional(v.number()),
+    cameraUsername: v.optional(v.string()),
+    cameraPassword: v.optional(v.string()),
+    cameraStreamPath: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { floorId, ...updates } = args;

@@ -75,6 +75,11 @@ export function SiteMapSetup() {
   const [floorWidth, setFloorWidth] = useState("1200");
   const [floorHeight, setFloorHeight] = useState("800");
   const [floorPlanUrl, setFloorPlanUrl] = useState("");
+  const [cameraIp, setCameraIp] = useState("");
+  const [cameraPort, setCameraPort] = useState("554");
+  const [cameraUsername, setCameraUsername] = useState("");
+  const [cameraPassword, setCameraPassword] = useState("");
+  const [cameraStreamPath, setCameraStreamPath] = useState("/stream1");
 
   const [sensorName, setSensorName] = useState("");
   const [sensorAccount, setSensorAccount] = useState("");
@@ -152,6 +157,11 @@ export function SiteMapSetup() {
         width: parseInt(floorWidth) || 1200,
         height: parseInt(floorHeight) || 800,
         floorPlanUrl: floorPlanUrl || undefined,
+        cameraIp: cameraIp || undefined,
+        cameraPort: cameraPort ? parseInt(cameraPort) : undefined,
+        cameraUsername: cameraUsername || undefined,
+        cameraPassword: cameraPassword || undefined,
+        cameraStreamPath: cameraStreamPath || undefined,
       });
     } else {
       if (!selectedSite) return;
@@ -162,6 +172,11 @@ export function SiteMapSetup() {
         width: parseInt(floorWidth) || 1200,
         height: parseInt(floorHeight) || 800,
         floorPlanUrl: floorPlanUrl || undefined,
+        cameraIp: cameraIp || undefined,
+        cameraPort: cameraPort ? parseInt(cameraPort) : undefined,
+        cameraUsername: cameraUsername || undefined,
+        cameraPassword: cameraPassword || undefined,
+        cameraStreamPath: cameraStreamPath || undefined,
       });
     }
 
@@ -169,6 +184,11 @@ export function SiteMapSetup() {
     setFloorAccount("");
     setFloorArea("");
     setFloorPlanUrl("");
+    setCameraIp("");
+    setCameraPort("554");
+    setCameraUsername("");
+    setCameraPassword("");
+    setCameraStreamPath("/stream1");
     setEditingFloor(null);
     setShowFloorDialog(false);
   };
@@ -180,6 +200,11 @@ export function SiteMapSetup() {
     setFloorWidth(floor.width.toString());
     setFloorHeight(floor.height.toString());
     setFloorPlanUrl(floor.floorPlanUrl || "");
+    setCameraIp(floor.cameraIp || "");
+    setCameraPort(floor.cameraPort?.toString() || "554");
+    setCameraUsername(floor.cameraUsername || "");
+    setCameraPassword(floor.cameraPassword || "");
+    setCameraStreamPath(floor.cameraStreamPath || "/stream1");
     
     // Pre-fill account number from the site
     if (sites) {
@@ -746,6 +771,73 @@ export function SiteMapSetup() {
                 Enter a publicly accessible image URL for the area plan background
               </p>
             </div>
+
+            {/* Camera Configuration Section */}
+            <div className="border-t pt-4 mt-4">
+              <h4 className="text-sm font-semibold mb-3">ONVIF Camera Configuration (Optional)</h4>
+              <p className="text-xs text-muted-foreground mb-3">
+                Configure the ONVIF camera for this area. Multiple areas can share the same camera.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cameraIp">Camera IP Address</Label>
+                  <Input
+                    id="cameraIp"
+                    value={cameraIp}
+                    onChange={(e) => setCameraIp(e.target.value)}
+                    placeholder="e.g., 192.168.1.100"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cameraPort">RTSP Port</Label>
+                  <Input
+                    id="cameraPort"
+                    type="number"
+                    value={cameraPort}
+                    onChange={(e) => setCameraPort(e.target.value)}
+                    placeholder="554"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="cameraUsername">Username</Label>
+                  <Input
+                    id="cameraUsername"
+                    value={cameraUsername}
+                    onChange={(e) => setCameraUsername(e.target.value)}
+                    placeholder="admin"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="cameraPassword">Password</Label>
+                  <Input
+                    id="cameraPassword"
+                    type="password"
+                    value={cameraPassword}
+                    onChange={(e) => setCameraPassword(e.target.value)}
+                    placeholder="••••••••"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2 mt-4">
+                <Label htmlFor="cameraStreamPath">Stream Path</Label>
+                <Input
+                  id="cameraStreamPath"
+                  value={cameraStreamPath}
+                  onChange={(e) => setCameraStreamPath(e.target.value)}
+                  placeholder="/stream1 or /h264/ch1/main/av_stream"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Common paths: /stream1, /cam/realmonitor, /h264/ch1/main/av_stream
+                </p>
+              </div>
+            </div>
           </div>
 
           <DialogFooter>
@@ -758,6 +850,11 @@ export function SiteMapSetup() {
               setFloorWidth("1200");
               setFloorHeight("800");
               setFloorPlanUrl("");
+              setCameraIp("");
+              setCameraPort("554");
+              setCameraUsername("");
+              setCameraPassword("");
+              setCameraStreamPath("/stream1");
             }}>
               Cancel
             </Button>

@@ -148,6 +148,11 @@ export const updateAlertWithAIAnalysis = mutation({
       aiAdditionalContext: v.string(),
       aiAnalyzedAt: v.number(),
       aiAnalysisDuration: v.number(), // Duration in milliseconds
+      // Arabic translations
+      aiSummaryAr: v.string(),
+      aiReasoningAr: v.string(),
+      aiEstimatedResponseTimeAr: v.string(),
+      aiAdditionalContextAr: v.string(),
     }),
   },
   handler: async (ctx, args) => {
@@ -219,6 +224,11 @@ export const analyzeAlertWithAI = action({
         aiAdditionalContext: analysis.additionalContext,
         aiAnalyzedAt: Date.now(),
         aiAnalysisDuration: duration,
+        // Arabic translations
+        aiSummaryAr: analysis.summaryAr,
+        aiReasoningAr: analysis.reasoningAr,
+        aiEstimatedResponseTimeAr: analysis.estimatedResponseTimeAr,
+        aiAdditionalContextAr: analysis.additionalContextAr,
       },
     });
     

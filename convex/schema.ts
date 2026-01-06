@@ -46,6 +46,12 @@ export default defineSchema({
     floorPlanStorageId: v.optional(v.string()), // Convex storage ID
     width: v.number(), // Floor plan dimensions for coordinate system
     height: v.number(),
+    // ONVIF Camera configuration - multiple areas can share the same camera
+    cameraIp: v.optional(v.string()), // IP address of ONVIF camera (e.g., "192.168.1.100")
+    cameraPort: v.optional(v.number()), // Camera RTSP port (default: 554)
+    cameraUsername: v.optional(v.string()), // Camera authentication username
+    cameraPassword: v.optional(v.string()), // Camera authentication password
+    cameraStreamPath: v.optional(v.string()), // RTSP stream path (e.g., "/stream1", "/h264/ch1/main/av_stream")
     active: v.boolean(),
     createdAt: v.number(),
   }).index("by_site", ["siteId"])
@@ -112,6 +118,12 @@ export default defineSchema({
     aiAdditionalContext: v.optional(v.string()), // Additional AI context
     aiAnalyzedAt: v.optional(v.number()), // Timestamp when AI analysis was performed
     aiAnalysisDuration: v.optional(v.number()), // Duration of AI analysis in milliseconds
+    
+    // Arabic translations of AI analysis
+    aiSummaryAr: v.optional(v.string()), // Arabic translation of AI summary
+    aiReasoningAr: v.optional(v.string()), // Arabic translation of AI reasoning
+    aiEstimatedResponseTimeAr: v.optional(v.string()), // Arabic translation of response time
+    aiAdditionalContextAr: v.optional(v.string()), // Arabic translation of additional context
     
     // ========== Legacy Contact ID Fields (for backwards compatibility) ==========
     customerAccount: v.optional(v.string()), // DEPRECATED: Use accountNumber
