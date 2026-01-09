@@ -1,14 +1,13 @@
 /**
- * Seed Scenario Testing Account
+ * Seed Scenario Testing Accounts
  * 
- * Creates 4 accounts with areas and sensors:
- * - Account 1111: Riyadh Security Complex (Saudi Arabia)
- * - Account 2222: Jeddah Commercial Center (Saudi Arabia) 
- * - Account 3333: Dubai Testing Facility (UAE) - Main scenario testing
- * - Account 4444: Abu Dhabi Corporate HQ (UAE)
+ * Creates 3 accounts for multi-location scenario testing:
+ * - Account 3333: ATM Location (Dubai, UAE) - Burglary + Motion scenarios
+ * - Account 4444: Branch 1 (Abu Dhabi, UAE) - Fire + Sensor Health scenarios
+ * - Account 5555: Branch 2 (Riyadh, Saudi Arabia) - Communication + Medical + False Alarm scenarios
  * 
  * Each account has 4 areas with 8 sensors per area and floor plan images
- * Scenario alerts target Account 3333 for AI analysis testing
+ * Scenarios are distributed across accounts to test AI analysis in multi-location environment
  */
 
 import { mutation } from "./_generated/server";
@@ -66,56 +65,14 @@ export const seedScenarioAccount = mutation({
       "https://zapsight.s3.ap-south-1.amazonaws.com/ChatGPT+Image+Jan+7%2C+2026%2C+07_26_28+PM.png",
     ];
 
-    // ========== ACCOUNT 1111 - Riyadh Security Complex ==========
-    console.log("\n📍 Creating Account 1111 - Riyadh Security Complex...");
+    // ========== ACCOUNT 3333 - ATM Location ==========
+    console.log("\n🏧 Creating Account 3333 - ATM Location...");
     
-    const account1111 = await ctx.db.insert("sites", {
-      accountNumber: "1111",
-      name: "Riyadh Security Complex",
-      description: "King Fahd District, Riyadh, Saudi Arabia - Primary security monitoring facility",
-      address: "King Fahd District, Riyadh, Saudi Arabia",
-      city: "Riyadh",
-      state: "Riyadh Province",
-      country: "Saudi Arabia",
-      latitude: 25.0800,
-      longitude: 55.1400,
-      active: true,
-      createdAt: Date.now(),
-      createdBy: systemUser._id,
-    });
-
-    await createAreasAndSensors(ctx, account1111, "1111", floorPlanUrls);
-    console.log("✅ Created Account 1111 with 4 areas and 32 sensors");
-
-    // ========== ACCOUNT 2222 - Jeddah Commercial Center ==========
-    console.log("\n📍 Creating Account 2222 - Jeddah Commercial Center...");
-    
-    const account2222 = await ctx.db.insert("sites", {
-      accountNumber: "2222",
-      name: "Jeddah Commercial Center",
-      description: "Al Andalus District, Jeddah, Saudi Arabia - Commercial business center",
-      address: "Al Andalus District, Jeddah, Saudi Arabia",
-      city: "Jeddah",
-      state: "Makkah Province",
-      country: "Saudi Arabia",
-      latitude: 25.0600,
-      longitude: 55.1300,
-      active: true,
-      createdAt: Date.now(),
-      createdBy: systemUser._id,
-    });
-
-    await createAreasAndSensors(ctx, account2222, "2222", floorPlanUrls);
-    console.log("✅ Created Account 2222 with 4 areas and 32 sensors");
-
-    // ========== ACCOUNT 3333 - Dubai Testing Facility ==========
-    console.log("\n📍 Creating Account 3333 - Dubai Testing Facility (SCENARIO TARGET)...");
-    
-    const accountId = await ctx.db.insert("sites", {
+    const account3333 = await ctx.db.insert("sites", {
       accountNumber: "3333",
-      name: "AI Scenario Testing Facility",
-      description: "Dubai Marina, Dubai, UAE - Testing facility for AI alert analysis scenarios",
-      address: "Dubai Marina, Dubai, UAE",
+      name: "ATM - Downtown Dubai",
+      description: "Dubai Marina ATM - High-security ATM location with burglary and motion detection",
+      address: "Dubai Marina Walk, Dubai, UAE",
       city: "Dubai",
       state: "Dubai",
       country: "United Arab Emirates",
@@ -126,50 +83,78 @@ export const seedScenarioAccount = mutation({
       createdBy: systemUser._id,
     });
 
-    await createAreasAndSensors(ctx, accountId, "3333", floorPlanUrls);
-    console.log("✅ Created Account 3333 with 4 areas and 32 sensors");
+    await createAreasAndSensors(ctx, account3333, "3333", floorPlanUrls);
+    console.log("✅ Created Account 3333 (ATM) with 4 areas and 32 sensors");
+    console.log("   Scenarios: Burglary (Area 01 Zone 03), Motion Detection (Area 01 Zone 05)");
 
-    // ========== ACCOUNT 4444 - Abu Dhabi Corporate HQ ==========
-    console.log("\n📍 Creating Account 4444 - Abu Dhabi Corporate HQ...");
+    // ========== ACCOUNT 4444 - Branch 1 ==========
+    console.log("\n🏦 Creating Account 4444 - Branch 1...");
     
     const account4444 = await ctx.db.insert("sites", {
       accountNumber: "4444",
-      name: "Abu Dhabi Corporate Headquarters",
-      description: "Al Maryah Island, Abu Dhabi, UAE - Corporate headquarters facility",
-      address: "Al Maryah Island, Abu Dhabi, UAE",
-      city: "Abu Dhabi",
-      state: "Abu Dhabi",
+      name: "Branch 1 - Abu Dhabi Main",
+      description: "Abu Dhabi Main Branch - Fire safety and sensor health monitoring",
+      address: "Business Bay, Dubai, UAE",
+      city: "Dubai",
+      state: "Dubai",
       country: "United Arab Emirates",
-      latitude: 25.0900,
-      longitude: 55.1500,
+      latitude: 25.1870,
+      longitude: 55.2590,
       active: true,
       createdAt: Date.now(),
       createdBy: systemUser._id,
     });
 
     await createAreasAndSensors(ctx, account4444, "4444", floorPlanUrls);
+    console.log("✅ Created Account 4444 (Branch 1) with 4 areas and 32 sensors");
+    console.log("   Scenarios: Fire Emergency (Area 01-02 Zone 07), Sensor Health (Area 02 Zone 04)");
+
+    // ========== ACCOUNT 5555 - Branch 2 ==========
+    console.log("\n🏦 Creating Account 5555 - Branch 2...");
+    
+    const account5555 = await ctx.db.insert("sites", {
+      accountNumber: "5555",
+      name: "Branch 2 - Riyadh Central",
+      description: "Riyadh Central Branch - Communication reliability and medical emergency response",
+      address: "Jumeirah Beach Road, Dubai, UAE",
+      city: "Dubai",
+      state: "Dubai",
+      country: "United Arab Emirates",
+      latitude: 25.2048,
+      longitude: 55.2708,
+      active: true,
+      createdAt: Date.now(),
+      createdBy: systemUser._id,
+    });
+
+    await createAreasAndSensors(ctx, account5555, "5555", floorPlanUrls);
     console.log("✅ Created Account 4444 with 4 areas and 32 sensors");
 
     console.log("\n" + "═".repeat(80));
     console.log("🎉 SCENARIO ACCOUNT SEEDING COMPLETE");
+    await createAreasAndSensors(ctx, account5555, "5555", floorPlanUrls);
+    console.log("✅ Created Account 5555 (Branch 2) with 4 areas and 32 sensors");
+    console.log("   Scenarios: Communication Failure (Area 01), Medical Emergency (Area 02 Zone 05), False Alarms (Area 03 Zone 08)");
+
+    console.log("\n" + "═".repeat(80));
+    console.log("🎉 SCENARIO ACCOUNTS SEEDED SUCCESSFULLY!");
     console.log("═".repeat(80));
-    console.log("✅ Accounts Created: 4 (1111, 2222, 3333, 4444)");
+    console.log("✅ Accounts Created: 3 (3333, 4444, 5555)");
     console.log("✅ Areas per Account: 4 (01, 02, 03, 04)");
     console.log("✅ Sensors per Area: 8");
-    console.log("✅ Total Sensors: 128 (32 per account)");
+    console.log("✅ Total Sensors: 96 (32 per account)");
     console.log("\n📋 Account Breakdown:");
-    console.log("   1111: Riyadh Security Complex (Saudi Arabia)");
-    console.log("   2222: Jeddah Commercial Center (Saudi Arabia)");
-    console.log("   3333: Dubai Testing Facility (UAE) - SCENARIO TARGET");
-    console.log("   4444: Abu Dhabi Corporate HQ (UAE)");
-    console.log("\n🎯 Scenario testing ready on Account 3333!");
+    console.log("   3333: ATM - Downtown Dubai (UAE) - Burglary + Motion");
+    console.log("   4444: Branch 1 - Abu Dhabi Main (UAE) - Fire + Sensor Health");
+    console.log("   5555: Branch 2 - Riyadh Central (Saudi Arabia) - Communication + Medical + False Alarms");
+    console.log("\n🎯 Multi-location scenario testing ready!");
     console.log("═".repeat(80) + "\n");
 
     return {
       success: true,
-      accountsCreated: 4,
-      areasCreated: 16,
-      sensorsCreated: 128,
+      accountsCreated: 3,
+      areasCreated: 12,
+      sensorsCreated: 96,
     };
   },
 });

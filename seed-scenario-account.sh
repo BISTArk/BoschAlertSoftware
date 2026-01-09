@@ -1,14 +1,16 @@
 #!/bin/bash
 
-# Seed Scenario Account 3333
-# Run this script to set up the Dubai testing facility with 4 areas and 32 sensors
+# Seed Scenario Testing Accounts (3333, 4444, 5555)
+# Run this script to set up the multi-location testing environment
 
-echo "🌱 Seeding Scenario Testing Account 3333..."
+echo "🌱 Seeding Multi-Location Scenario Testing Accounts..."
 echo ""
 echo "This will create:"
-echo "  • Account 3333 (Dubai, UAE)"
-echo "  • 4 Areas (01, 02, 03, 04)"
-echo "  • 8 Sensors per area (32 total)"
+echo "  • Account 3333 - ATM (Dubai, UAE)"
+echo "  • Account 4444 - Branch 1 (Abu Dhabi, UAE)"
+echo "  • Account 5555 - Branch 2 (Riyadh, Saudi Arabia)"
+echo "  • 4 Areas per account"
+echo "  • 8 Sensors per area (96 total)"
 echo ""
 
 # Run the Convex mutation
@@ -18,6 +20,7 @@ echo ""
 echo "✅ Seeding complete!"
 echo ""
 echo "Next steps:"
-echo "  1. Start SIA receiver: npx tsx server/siaReceiver.ts"
-echo "  2. Run scenarios: npx tsx server/scenarioPacketStreamer.ts"
+echo "  1. Start SIA receiver: npm run server"
+echo "  2. Start admin API: npm run admin-api"
+echo "  3. Use admin panel to stream scenarios"
 echo ""
