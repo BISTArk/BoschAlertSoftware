@@ -402,7 +402,16 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
                     <TableCell className="font-medium">
                       {new Date(alert.receivedAt).toLocaleString()}
                     </TableCell>
-                    <TableCell>{getStatusBadge(alert.status)}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(alert.status)}
+                        {alert.falsePositive && (
+                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                            False Positive
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell>
                       {assignedUser ? (
                         <div className="flex items-center gap-2">
@@ -454,6 +463,7 @@ export function AlertsTable({ onAlertClick }: AlertsTableProps = {}) {
                         alertId={alert._id}
                         currentStatus={alert.status}
                         assignedTo={alert.assignedTo}
+                        falsePositive={alert.falsePositive}
                       />
                     </TableCell>
                   </TableRow>

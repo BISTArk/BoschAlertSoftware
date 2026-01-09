@@ -457,6 +457,30 @@ export const assignAlert = mutation({
   },
 });
 
+// Mark alert as false positive
+export const markAsFalsePositive = mutation({
+  args: {
+    alertId: v.id("alerts"),
+    userId: v.optional(v.id("users")),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const alert = await ctx.db.get(args.alertId);
+    if (!alert) {
+      throw new Error("Alert not found");
+    }
+
+    await ctx.db.patch(args.alertId, {
+      falsePositive: true,
+      falsePositiveMarkedAt: Date.now(),
+      falsePositiveMarkedBy: args.userId,
+      falsePositiveReason: args.reason,
+    });
+
+    return { success: true };
+  },
+});
+
 // Update alert status
 export const updateAlertStatus = mutation({
   args: {

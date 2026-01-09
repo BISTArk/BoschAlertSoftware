@@ -73,7 +73,7 @@ export const migrateContactIdToSiaDC09 = mutation({
 });
 
 // Delete all existing alerts (admin only)
-export const clearAllAlerts = internalMutation({
+export const clearAllAlerts = mutation({
   args: {},
   handler: async (ctx) => {
     const alerts = await ctx.db.query("alerts").collect();

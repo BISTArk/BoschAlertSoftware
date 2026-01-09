@@ -105,6 +105,8 @@ export const getAlertContext = query({
           areaName,
           sensorName,
           sensorType,
+          falsePositive: a.falsePositive || false,
+          falsePositiveReason: a.falsePositiveReason,
         });
       }
     }

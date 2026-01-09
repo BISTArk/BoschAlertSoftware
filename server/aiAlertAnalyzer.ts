@@ -93,6 +93,8 @@ interface AlertContext {
     areaName?: string;
     sensorName?: string;
     sensorType?: string;
+    falsePositive?: boolean;
+    falsePositiveReason?: string;
   }>;
   
   // Current time context
@@ -179,7 +181,23 @@ function buildAnalysisPrompt(context: AlertContext): string {
 
   if (recentAlerts && recentAlerts.length > 0) {
     prompt += `\n\n**RECENT ALERTS (Last 24h):**`;
-    prompt += `\nAnalyze these recent alerts to identify patterns (e.g., fire spreading, intruder movement, escalating situation):`;
+    prompt += `\nAnalyze these recent alerts to identify patterns (e.g., fire spreading, intruder movement, escalating situation, recurring false alarms):`;
+    
+    // Count false positives and real alerts
+    const falsePositiveCount = recentAlerts.filter(ra => ra.falsePositive).length;
+    const realAlertCount = recentAlerts.length - falsePositiveCount;
+    
+    if (falsePositiveCount > 0 || realAlertCount > 0) {
+      prompt += `\n\n**PATTERN SUMMARY:**`;
+      if (realAlertCount > 0) {
+        prompt += `\n- **${realAlertCount} REAL alert(s)** (not marked false positive) - SIGNIFICANT`;
+      }
+      if (falsePositiveCount > 0) {
+        prompt += `\n- ${falsePositiveCount} false positive(s) (previously verified as non-threats)`;
+      }
+    }
+    
+    prompt += `\n`;
     recentAlerts.slice(0, 5).forEach((ra, idx) => {
       const timeAgo = getTimeAgo(currentTime.getTime() - ra.timestamp);
       let alertLine = `\n${idx + 1}. ${ra.eventDescription} (${ra.priority}) - ${timeAgo} ago`;
@@ -198,6 +216,16 @@ function buildAnalysisPrompt(context: AlertContext): string {
         if (ra.sensorName) sensorParts.push(ra.sensorName);
         if (ra.sensorType) sensorParts.push(`(${ra.sensorType})`);
         alertLine += ` | Sensor: ${sensorParts.join(' ')}`;
+      }
+      
+      // Add false positive indicator
+      if (ra.falsePositive) {
+        alertLine += ` | ⚠️ **FALSE POSITIVE**`;
+        if (ra.falsePositiveReason) {
+          alertLine += ` (${ra.falsePositiveReason})`;
+        }
+      } else {
+        alertLine += ` | ✓ Real alert (not marked false)`;
       }
       
       prompt += alertLine;
@@ -228,14 +256,37 @@ Analyze this security alert and provide:
 **AVAILABLE ACTIONS:**
 ${ALERT_ACTIONS.join(', ')}
 
-Consider:
-- Is this a real emergency or likely a false alarm?
+**CRITICAL ANALYSIS GUIDELINES:**
+
+**FALSE POSITIVE PATTERN DETECTION:**
+- If the SAME zone/sensor has triggered multiple times and previous alerts were marked **FALSE POSITIVE**, this is likely another false alarm
+- **REDUCE risk score by 20-40 points** if there are 2+ false positives from the same zone recently
+- In summary, mention "Recurring false alarm pattern detected - Zone X has triggered Y times in 24h, previous alerts marked false positive"
+- Recommend: acknowledge_and_monitor, schedule_maintenance, reset_sensor (NOT emergency dispatch)
+- Example: If Zone 008 triggered 4 times and first 3 were false positives, this 4th alert is likely also false (Risk: 30-40/100)
+
+**ESCALATING REAL THREAT DETECTION:**
+- If previous alerts from the SAME zone were **NOT marked false positive** (real alerts), this indicates an escalating or unresolved situation
+- **INCREASE risk score by 20-40 points** if there are 2+ REAL (non-false-positive) alerts from same zone
+- Multiple real alerts = persistent threat, not false alarm pattern
+- Example: If Zone 008 triggered 4 times and NONE are marked false positive, this is serious (Risk: 85-95/100)
+
+**GENERAL CONSIDERATIONS:**
+- Is this a real emergency or likely a false alarm based on the pattern?
 - Does the pattern of recent alerts suggest escalation or an ongoing incident?
 - Are multiple zones/sensors triggering in sequence? (e.g., fire spreading, intruder moving through building)
 - Does the location and sensor data tell a story? (e.g., "smoke detector in zone 1, then fire alarm in zone 2, then zone 3 - fire is spreading")
-- What is the appropriate response based on the event type, time of day, and location?
+- What is the appropriate response based on the event type, time of day, location, AND historical pattern?
 - Should multiple teams be dispatched or is remote verification sufficient?
 - Build a narrative: What is actually happening based on all the evidence?
+
+**RISK SCORE CALIBRATION:**
+- 0-30: False positive pattern detected, maintenance needed
+- 30-50: Possible false alarm but requires verification
+- 50-70: Real alert requiring standard response
+- 70-85: Serious situation requiring immediate attention
+- 85-95: Critical emergency with escalating pattern
+- 95-100: Life-threatening emergency requiring all resources
 
 **IMPORTANT - ARABIC TRANSLATION:**
 Provide accurate Arabic translations for:

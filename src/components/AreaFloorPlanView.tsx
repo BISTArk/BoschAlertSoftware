@@ -40,6 +40,15 @@ const getPriorityColor = (priority?: "critical" | "high" | "medium" | "low"): st
   }
 };
 
+// Normalize zone numbers to 4-digit format for comparison
+const normalizeZone = (zone?: string): string => {
+  if (!zone) return "";
+  // Remove leading zeros and pad to 4 digits
+  const numericZone = parseInt(zone, 10);
+  if (isNaN(numericZone)) return zone;
+  return numericZone.toString().padStart(4, "0");
+};
+
 export function AreaFloorPlanView({
   accountNumber,
   areaNumber,
@@ -162,7 +171,10 @@ export function AreaFloorPlanView({
       // Draw sensors
       const sensors = areaData.sensors || {};
       Object.entries(sensors).forEach(([sensorZone, sensor]: [string, any]) => {
-        const isActive = sensorZone === zoneNumber;
+        // Normalize both zone numbers for comparison
+        const normalizedSensorZone = normalizeZone(sensorZone);
+        const normalizedAlertZone = normalizeZone(zoneNumber);
+        const isActive = normalizedSensorZone === normalizedAlertZone;
         const x = sensor.positionX;
         const y = sensor.positionY;
 

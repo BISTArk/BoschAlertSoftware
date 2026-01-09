@@ -11,6 +11,7 @@ import { TopHeader } from "@/components/TopHeader"
 import { GuardAvailabilityToggle } from "@/components/GuardAvailabilityToggle"
 import { TestAlertGenerator } from "@/components/TestAlertGenerator"
 import { Documentation } from "@/components/Documentation"
+import { AdminPanel } from "@/components/AdminPanel"
 import { useAuth } from "@/contexts/AuthContext"
 import type { Id } from "../convex/_generated/dataModel"
 
@@ -97,17 +98,7 @@ function App() {
       case "analytics":
         return <AnalyticsDashboard />;
       case "admin":
-        return (
-          <div className="space-y-6">
-            <div className="text-center py-6">
-              <h2 className="text-2xl font-bold mb-2">Admin Panel</h2>
-              <p className="text-muted-foreground">System administration and user management</p>
-            </div>
-            <div className="flex justify-center">
-              <TestAlertGenerator />
-            </div>
-          </div>
-        );
+        return <AdminPanel />;
       default:
         return <DashboardNew />;
     }

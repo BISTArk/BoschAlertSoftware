@@ -38,9 +38,9 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
     );
   }) || [];
 
-  // Use fixed dimensions for the area map (can be made configurable later)
-  const width = 1000;
-  const height = 800;
+  // Use floor dimensions from database to match sensor positions
+  const width = floor?.width || 1200;
+  const height = floor?.height || 800;
 
   useEffect(() => {
     if (!canvasRef.current || !allSensors) return;
@@ -49,7 +49,7 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Set canvas size
+    // Set canvas size to match floor dimensions
     canvas.width = width;
     canvas.height = height;
 
@@ -77,9 +77,9 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
     const drawSensors = () => {
       // Draw sensors
       allSensors.forEach((sensor) => {
-      // Check if sensor has an active alert
+      // Check if sensor has an active alert (normalize zone numbers for comparison)
       const hasAlert = areaAlerts.some(
-        (alert) => alert.zoneNumber === sensor.zone
+        (alert) => normalizeZone(alert.zoneNumber) === normalizeZone(sensor.zone)
       );
 
       const x = sensor.positionX;
@@ -91,7 +91,7 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
 
       if (hasAlert) {
         // Highlight sensor with alert
-        const alert = areaAlerts.find((a) => a.zoneNumber === sensor.zone);
+        const alert = areaAlerts.find((a) => normalizeZone(a.zoneNumber) === normalizeZone(sensor.zone));
         const priorityColor = getPriorityColor(alert?.priority);
         
         ctx.fillStyle = priorityColor;
@@ -135,18 +135,21 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
     // Load and draw area plan image if available
     if (floor?.floorPlanUrl) {
       const img = new Image();
-      img.crossOrigin = "anonymous";
+      // Don't set crossOrigin to avoid CORS issues with external images
       img.onload = () => {
+        console.log("LiveAreaMap: Floor plan image loaded successfully");
         ctx.globalAlpha = 0.4;
         ctx.drawImage(img, 0, 0, width, height);
         ctx.globalAlpha = 1.0;
         drawSensors();
       };
-      img.onerror = () => {
+      img.onerror = (e) => {
+        console.error("LiveAreaMap: Failed to load floor plan image:", floor.floorPlanUrl, e);
         // If image fails to load, draw grid as fallback
         drawGrid();
         drawSensors();
       };
+      console.log("LiveAreaMap: Loading floor plan image from URL:", floor.floorPlanUrl);
       img.src = floor.floorPlanUrl;
     } else {
       // No area plan, draw grid
@@ -154,6 +157,15 @@ export function LiveAreaMap({ floorId, showAlerts = true }: LiveAreaMapProps) {
       drawSensors();
     }
   }, [allSensors, areaAlerts, width, height, floor]);
+
+  // Normalize zone numbers to 4-digit format for comparison
+  const normalizeZone = (zone?: string): string => {
+    if (!zone) return "";
+    // Remove leading zeros and pad to 4 digits
+    const numericZone = parseInt(zone, 10);
+    if (isNaN(numericZone)) return zone;
+    return numericZone.toString().padStart(4, "0");
+  };
 
   const getPriorityColor = (priority?: string): string => {
     switch (priority) {

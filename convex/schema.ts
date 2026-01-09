@@ -169,6 +169,12 @@ export default defineSchema({
     resolvedBy: v.optional(v.id("users")),
     responseType: v.optional(v.string()), // "lockdown", "dispatch", "investigate", etc.
     notes: v.optional(v.string()),
+    
+    // False positive tracking
+    falsePositive: v.optional(v.boolean()), // true if marked as false positive
+    falsePositiveMarkedAt: v.optional(v.number()),
+    falsePositiveMarkedBy: v.optional(v.id("users")),
+    falsePositiveReason: v.optional(v.string()),
   })
     .index("by_account", ["accountNumber"])
     .index("by_received_at", ["receivedAt"])

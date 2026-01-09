@@ -183,9 +183,19 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
               <h1 className="text-2xl font-bold">
                 Incident #{alert._id.slice(-6)}: {alert.eventDescription || "Security Alert"}
               </h1>
-              <p className="text-sm text-muted-foreground">
-                Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}
-              </p>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-muted-foreground">
+                  Account {alert.accountNumber}, Zone {alert.zoneNumber || "N/A"}
+                </p>
+                {alert.falsePositive && (
+                  <span className="px-2 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                    False Positive
+                    {alert.falsePositiveReason && (
+                      <span className="ml-1">· {alert.falsePositiveReason}</span>
+                    )}
+                  </span>
+                )}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -195,6 +205,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 alertId={alertId}
                 currentStatus={alert.status}
                 assignedTo={alert.assignedTo}
+                falsePositive={alert.falsePositive}
               />
             )}
             <div className="flex items-center gap-2">

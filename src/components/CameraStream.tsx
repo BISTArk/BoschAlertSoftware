@@ -285,12 +285,12 @@ export function CameraStream({
   };
 
   return (
-    <div className={`relative w-full h-full bg-black ${className}`}>
+    <div className={`relative w-full aspect-video bg-black rounded-lg overflow-hidden ${className}`}>
       {/* Video element for HLS, MP4, WebM, etc. */}
       {!isMJPEG && (
         <video
           ref={videoRef}
-          className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
+          className={`absolute inset-0 w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
           autoPlay
           playsInline
           muted
@@ -305,7 +305,7 @@ export function CameraStream({
           ref={imgRef}
           src={isSnapshot ? snapshotUrl : streamUrl}
           alt="Camera Stream"
-          className={`w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
+          className={`absolute inset-0 w-full h-full object-cover ${streamStatus !== "playing" ? "hidden" : ""}`}
           onLoad={handleImgLoad}
           onError={handleImgError}
           referrerPolicy="no-referrer"
@@ -314,53 +314,48 @@ export function CameraStream({
 
       {/* Overlay status screens */}
       {streamStatus === "unavailable" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
-          <div className="text-center">
-            <Video className="h-12 w-12 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">Camera Not Configured</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Configure camera IP in Area Setup
-            </p>
-            <Badge variant="outline" className="mt-2">
-              Account {accountNumber}
-              {areaNumber && `, Area ${areaNumber}`}
-              {zoneNumber && `, Zone ${zoneNumber}`}
-            </Badge>
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-950">
+          <div className="text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-800/50 border border-gray-700">
+              <Video className="h-8 w-8 text-gray-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-300">No Camera Configured</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Add camera in Area Setup
+              </p>
+            </div>
           </div>
         </div>
       )}
 
       {streamStatus === "loading" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
-          <div className="text-center">
-            <Loader2 className="h-12 w-12 mx-auto mb-2 text-muted-foreground animate-spin" />
-            <p className="text-sm text-muted-foreground">Connecting to camera...</p>
-            <p className="text-xs text-muted-foreground mt-1">{cameraIp}:{cameraPort}</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-950">
+          <div className="text-center space-y-3">
+            <Loader2 className="h-10 w-10 mx-auto text-blue-500 animate-spin" />
+            <div>
+              <p className="text-sm font-medium text-gray-300">Connecting...</p>
+              <p className="text-xs text-gray-500 mt-1">{cameraIp}</p>
+            </div>
           </div>
         </div>
       )}
 
       {streamStatus === "error" && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black">
-          <div className="text-center max-w-md p-4">
-            <AlertCircle className="h-12 w-12 mx-auto mb-2 text-yellow-500" />
-            <p className="text-sm font-semibold text-white mb-1">Camera Stream Error</p>
-            <p className="text-xs text-muted-foreground mb-3">{errorMessage}</p>
-            <Card className="bg-muted/10">
-              <CardContent className="p-3 text-left">
-                <p className="text-xs font-semibold text-white mb-2">Configuration:</p>
-                <div className="space-y-1 text-xs text-muted-foreground font-mono">
-                  <p>IP: {cameraIp}</p>
-                  <p>Port: {cameraPort}</p>
-                  <p>Path: {cameraStreamPath}</p>
-                  <p>Auth: {cameraUsername ? "✓ Configured" : "✗ Not configured"}</p>
-                  <p className="text-yellow-500 mt-2">Stream URL: {streamUrl}</p>
-                </div>
-              </CardContent>
-            </Card>
-            <p className="text-xs text-muted-foreground mt-3">
-              Verify the stream URL is accessible and returns a valid video format (HLS, MP4, MJPEG, etc.)
-            </p>
+        <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-950 p-4">
+          <div className="text-center space-y-3 max-w-xs">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/10 border border-yellow-500/30">
+              <AlertCircle className="h-8 w-8 text-yellow-500" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-200">Camera Unavailable</p>
+              <p className="text-xs text-gray-500 mt-1">{errorMessage}</p>
+            </div>
+            {cameraIp && (
+              <div className="text-xs text-gray-600 font-mono">
+                {cameraIp}:{cameraPort}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -376,13 +371,13 @@ export function CameraStream({
       )}
       
       {/* Camera info badge */}
-      <div className="absolute bottom-2 left-2">
+      {/* <div className="absolute bottom-2 left-2">
         <Badge variant="outline" className="bg-black/50 backdrop-blur-sm">
           Account {accountNumber}
           {areaNumber && `, Area ${areaNumber}`}
           {zoneNumber && `, Zone ${zoneNumber}`}
         </Badge>
-      </div>
+      </div> */}
     </div>
   );
 }

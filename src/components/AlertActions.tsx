@@ -21,25 +21,29 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CheckCircle, UserPlus } from "lucide-react";
+import { CheckCircle, UserPlus, XCircle } from "lucide-react";
 
 interface AlertActionsProps {
   alertId: Id<"alerts">;
   currentStatus?: string;
   assignedTo?: Id<"users">;
+  falsePositive?: boolean;
 }
 
-export function AlertActions({ alertId, currentStatus, assignedTo }: AlertActionsProps) {
+export function AlertActions({ alertId, currentStatus, assignedTo, falsePositive }: AlertActionsProps) {
   const { user } = useAuth();
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showResolveDialog, setShowResolveDialog] = useState(false);
+  const [showFalsePositiveDialog, setShowFalsePositiveDialog] = useState(false);
   const [selectedGuard, setSelectedGuard] = useState<string>("");
   const [notes, setNotes] = useState("");
+  const [falsePositiveReason, setFalsePositiveReason] = useState("");
 
   const guards = useQuery(api.auth.getAvailableGuards);
   const assignAlert = useMutation(api.alerts.assignAlert);
   const reassignAlert = useMutation(api.alerts.reassignAlert);
   const updateStatus = useMutation(api.alerts.updateAlertStatus);
+  const markAsFalsePositive = useMutation(api.alerts.markAsFalsePositive);
 
   const handleAssign = async () => {
     if (!selectedGuard || !user) return;
@@ -82,6 +86,22 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
       setNotes("");
     } catch (error) {
       console.error("Failed to resolve alert:", error);
+    }
+  };
+
+  const handleMarkFalsePositive = async () => {
+    if (!user) return;
+
+    try {
+      await markAsFalsePositive({
+        alertId,
+        userId: user._id,
+        reason: falsePositiveReason || undefined,
+      });
+      setShowFalsePositiveDialog(false);
+      setFalsePositiveReason("");
+    } catch (error) {
+      console.error("Failed to mark as false positive:", error);
     }
   };
 
@@ -131,6 +151,21 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
             Resolve
           </Button>
         </>
+      )}
+
+      {/* Anyone can mark as false positive if not already marked */}
+      {!falsePositive && currentStatus !== "resolved" && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowFalsePositiveDialog(true);
+          }}
+        >
+          <XCircle className="h-4 w-4 mr-1" />
+          False Positive
+        </Button>
       )}
 
       {/* Heads and Admins can assign/reassign */}
@@ -216,6 +251,40 @@ export function AlertActions({ alertId, currentStatus, assignedTo }: AlertAction
             </Button>
             <Button onClick={handleResolve}>
               Mark as Resolved
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* False Positive Dialog */}
+      <Dialog open={showFalsePositiveDialog} onOpenChange={setShowFalsePositiveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark as False Positive</DialogTitle>
+            <DialogDescription>
+              Marking this alert as a false positive helps AI learn and improve future analysis.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="falsePositiveReason">Reason (Optional)</Label>
+              <Textarea
+                id="falsePositiveReason"
+                placeholder="e.g., Spider web on sensor, HVAC triggered motion detector, User error..."
+                value={falsePositiveReason}
+                onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFalsePositiveReason(e.target.value)}
+                rows={4}
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowFalsePositiveDialog(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleMarkFalsePositive} variant="destructive">
+              Mark as False Positive
             </Button>
           </DialogFooter>
         </DialogContent>
