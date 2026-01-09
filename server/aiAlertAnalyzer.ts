@@ -381,51 +381,181 @@ function generateFirstAlertFallback(
   timeOfDay: string
 ): AlertAnalysis {
   const category = alert.eventCategory?.toLowerCase() || '';
-  const priority = alert.priority?.toLowerCase() || 'medium';
+  const eventCode = alert.eventCode;
   
-  // Determine risk based on category and priority
-  let riskScore = 50;
-  let riskLevel: "low" | "medium" | "high" | "critical" = "medium";
-  let actions: AlertAction[] = ["verify_with_camera", "investigate_remotely", "acknowledge_and_monitor"];
+  // Get specific context based on event code
+  const eventContext = getEventContext(eventCode, category, siteName, areaName, sensorName, sensorType, timeOfDay);
   
-  if (category.includes('fire')) {
-    riskScore = 85;
-    riskLevel = "critical";
-    actions = ["dispatch_fire_department", "evacuate_building", "verify_with_camera", "contact_site_manager"];
-  } else if (category.includes('burglary') || category.includes('intrusion')) {
-    riskScore = 75;
-    riskLevel = "high";
-    actions = ["dispatch_security_team", "verify_with_camera", "lockdown_area", "contact_site_manager"];
-  } else if (category.includes('medical') || category.includes('panic')) {
-    riskScore = 90;
-    riskLevel = "critical";
-    actions = ["dispatch_medical", "dispatch_security_team", "contact_site_manager"];
-  } else if (priority === 'high' || priority === 'urgent') {
-    riskScore = 70;
-    riskLevel = "high";
-    actions = ["dispatch_security_team", "verify_with_camera", "contact_site_manager"];
-  }
+  const summary = `**${alert.eventDescription}** detected at **${siteName}** in **${areaName}**. The **${sensorName}** (${sensorType}) triggered during **${timeOfDay}** hours. ${eventContext.details} This is the **first alert** from this sensor in the last 24 hours, requiring immediate verification to determine if this is a genuine security event.`;
   
-  const summary = `**${alert.eventDescription}** detected at *${siteName}* in *${areaName}*. The **${sensorName}** (${sensorType}) was triggered during **${timeOfDay}** hours. This is the **first alert** from this zone in the last 24 hours, requiring immediate verification to determine if this is a genuine security event.`;
+  const reasoning = `Given this is the **first occurrence** with no recent activity pattern, recommend **immediate verification** through camera systems and remote monitoring. ${eventContext.reasoning} The **${alert.eventCategory}** category and **${alert.priority}** priority level indicate this should be treated seriously until confirmed. ${eventContext.actionGuidance}`;
   
-  const reasoning = `Given this is the **first occurrence** with no recent activity pattern, recommend **immediate verification** through camera systems and remote monitoring. The **${alert.eventCategory}** category and **${alert.priority}** priority indicate this should be treated seriously until confirmed. Dispatch appropriate response team if threat is verified.`;
+  const timeOfDayAr = timeOfDay === 'Morning' ? 'الصباح' : timeOfDay === 'Afternoon' ? 'بعد الظهر' : timeOfDay === 'Evening' ? 'المساء' : 'الليل';
   
-  const summaryAr = `تم اكتشاف **${alert.eventDescription}** في *${siteName}* في *${areaName}*. تم تفعيل **${sensorName}** (${sensorType}) خلال ساعات **${timeOfDay === 'Morning' ? 'الصباح' : timeOfDay === 'Afternoon' ? 'بعد الظهر' : timeOfDay === 'Evening' ? 'المساء' : 'الليل'}**. هذا هو **أول تنبيه** من هذه المنطقة خلال الـ 24 ساعة الماضية، ويتطلب التحقق الفوري لتحديد ما إذا كان هذا حدث أمني حقيقي.`;
+  const summaryAr = `تم اكتشاف **${alert.eventDescription}** في **${siteName}** في **${areaName}**. تم تفعيل **${sensorName}** (${sensorType}) خلال ساعات **${timeOfDayAr}**. ${eventContext.detailsAr} هذا هو **أول تنبيه** من هذا المستشعر خلال الـ 24 ساعة الماضية، ويتطلب التحقق الفوري لتحديد ما إذا كان هذا حدث أمني حقيقي.`;
   
-  const reasoningAr = `نظرًا لأن هذا **أول حدوث** بدون نمط نشاط حديث، نوصي **بالتحقق الفوري** من خلال أنظمة الكاميرات والمراقبة عن بُعد. تشير فئة **${alert.eventCategory}** وأولوية **${alert.priority}** إلى أنه يجب التعامل معها بجدية حتى يتم التأكيد. إرسال فريق الاستجابة المناسب في حالة التحقق من التهديد.`;
+  const reasoningAr = `نظرًا لأن هذا **أول حدوث** بدون نمط نشاط حديث، نوصي **بالتحقق الفوري** من خلال أنظمة الكاميرات والمراقبة عن بُعد. ${eventContext.reasoningAr} تشير فئة **${alert.eventCategory}** ومستوى الأولوية **${alert.priority}** إلى أنه يجب التعامل معها بجدية حتى يتم التأكيد. ${eventContext.actionGuidanceAr}`;
   
   return {
     summary,
-    riskScore,
-    riskLevel,
-    recommendedActions: actions,
+    riskScore: eventContext.riskScore,
+    riskLevel: eventContext.riskLevel,
+    recommendedActions: eventContext.actions,
     reasoning,
-    estimatedResponseTime: riskScore >= 85 ? "immediate" : riskScore >= 70 ? "5 minutes" : "15 minutes",
-    additionalContext: `First alert from this location. No historical pattern available. Status: Under investigation.`,
+    estimatedResponseTime: eventContext.responseTime,
+    additionalContext: `First alert from ${siteName}. ${eventContext.additionalInfo}`,
     summaryAr,
     reasoningAr,
-    estimatedResponseTimeAr: riskScore >= 85 ? "فوري" : riskScore >= 70 ? "5 دقائق" : "15 دقيقة",
-    additionalContextAr: `أول تنبيه من هذا الموقع. لا يوجد نمط تاريخي متاح. الحالة: قيد التحقيق.`
+    estimatedResponseTimeAr: eventContext.responseTimeAr,
+    additionalContextAr: `أول تنبيه من ${siteName}. ${eventContext.additionalInfoAr}`
+  };
+}
+
+/**
+ * Get event-specific context for more realistic fallback summaries
+ */
+function getEventContext(
+  eventCode: string,
+  category: string,
+  siteName: string,
+  areaName: string,
+  sensorName: string,
+  sensorType: string,
+  timeOfDay: string
+) {
+  const categoryLower = category.toLowerCase();
+  
+  // Burglary events (130-139, BA)
+  if (eventCode === '130' || eventCode === 'BA' || categoryLower.includes('burglary')) {
+    return {
+      riskScore: 78,
+      riskLevel: "high" as const,
+      actions: ["dispatch_security_team", "verify_with_camera", "lockdown_area", "contact_site_manager"] as AlertAction[],
+      responseTime: "5 minutes",
+      responseTimeAr: "5 دقائق",
+      details: `Potential unauthorized access or intrusion detected at ${siteName}.`,
+      detailsAr: `تم اكتشاف وصول غير مصرح به محتمل أو تطفل في ${siteName}.`,
+      reasoning: `Burglary alarms during ${timeOfDay} hours require swift security response to prevent potential theft or property damage.`,
+      reasoningAr: `تتطلب إنذارات السرقة خلال ساعات ${timeOfDay === 'Morning' ? 'الصباح' : timeOfDay === 'Afternoon' ? 'بعد الظهر' : timeOfDay === 'Evening' ? 'المساء' : 'الليل'} استجابة أمنية سريعة لمنع السرقة المحتملة أو تلف الممتلكات.`,
+      actionGuidance: "Dispatch security team to investigate on-site while monitoring via cameras.",
+      actionGuidanceAr: "إرسال فريق الأمن للتحقيق في الموقع أثناء المراقبة عبر الكاميرات.",
+      additionalInfo: "No recent activity. Security assessment in progress.",
+      additionalInfoAr: "لا يوجد نشاط حديث. تقييم أمني قيد التنفيذ."
+    };
+  }
+  
+  // Fire events (110-118, FA)
+  if (eventCode.startsWith('11') || eventCode === 'FA' || categoryLower.includes('fire')) {
+    return {
+      riskScore: 88,
+      riskLevel: "critical" as const,
+      actions: ["dispatch_fire_department", "evacuate_building", "verify_with_camera", "contact_site_manager"] as AlertAction[],
+      responseTime: "immediate",
+      responseTimeAr: "فوري",
+      details: `Fire alarm activated at ${siteName} - potential fire hazard detected.`,
+      detailsAr: `تم تفعيل إنذار الحريق في ${siteName} - تم اكتشاف خطر حريق محتمل.`,
+      reasoning: `Fire alarms are life-threatening emergencies requiring immediate evacuation protocols and fire department dispatch.`,
+      reasoningAr: `إنذارات الحريق هي حالات طوارئ تهدد الحياة وتتطلب بروتوكولات إخلاء فورية وإرسال فرقة الإطفاء.`,
+      actionGuidance: "Activate evacuation procedures immediately and verify through multiple sensors.",
+      actionGuidanceAr: "تفعيل إجراءات الإخلاء فورًا والتحقق من خلال أجهزة استشعار متعددة.",
+      additionalInfo: "Life safety priority. Immediate response required.",
+      additionalInfoAr: "أولوية سلامة الحياة. مطلوب استجابة فورية."
+    };
+  }
+  
+  // Medical/Panic events (100-102, 120-125, MA, PA)
+  if (eventCode.startsWith('10') || eventCode.startsWith('12') || eventCode === 'MA' || eventCode === 'PA' || 
+      categoryLower.includes('medical') || categoryLower.includes('panic')) {
+    return {
+      riskScore: 92,
+      riskLevel: "critical" as const,
+      actions: ["dispatch_medical", "dispatch_security_team", "contact_site_manager", "verify_with_camera"] as AlertAction[],
+      responseTime: "immediate",
+      responseTimeAr: "فوري",
+      details: `Emergency panic/medical button activated at ${siteName} - person in distress.`,
+      detailsAr: `تم تفعيل زر الطوارئ الطبي/الذعر في ${siteName} - شخص في محنة.`,
+      reasoning: `Medical emergencies and panic alarms indicate immediate danger to personnel requiring urgent medical and security response.`,
+      reasoningAr: `حالات الطوارئ الطبية وإنذارات الذعر تشير إلى خطر فوري على الموظفين ويتطلب استجابة طبية وأمنية عاجلة.`,
+      actionGuidance: "Dispatch medical services and security immediately. Person may be in life-threatening situation.",
+      actionGuidanceAr: "إرسال الخدمات الطبية والأمن فورًا. قد يكون الشخص في موقف يهدد حياته.",
+      additionalInfo: "Life-threatening emergency. Multiple teams dispatched.",
+      additionalInfoAr: "حالة طوارئ تهدد الحياة. تم إرسال فرق متعددة."
+    };
+  }
+  
+  // Communication/System troubles (350-356, NL, NCW)
+  if (eventCode.startsWith('35') || eventCode === 'NL' || eventCode === 'NCW' || 
+      categoryLower.includes('communication')) {
+    return {
+      riskScore: 62,
+      riskLevel: "high" as const,
+      actions: ["check_system_status", "investigate_remotely", "contact_site_manager", "schedule_maintenance"] as AlertAction[],
+      responseTime: "15 minutes",
+      responseTimeAr: "15 دقيقة",
+      details: `Communication system trouble detected at ${siteName} - potential connectivity issue.`,
+      detailsAr: `تم اكتشاف مشكلة في نظام الاتصالات في ${siteName} - مشكلة اتصال محتملة.`,
+      reasoning: `Communication failures can mask other security events and require immediate system diagnostics to restore monitoring capabilities.`,
+      reasoningAr: `يمكن أن تخفي حالات فشل الاتصالات أحداث أمنية أخرى وتتطلب تشخيصات نظام فورية لاستعادة قدرات المراقبة.`,
+      actionGuidance: "Check all communication channels and verify system connectivity.",
+      actionGuidanceAr: "تحقق من جميع قنوات الاتصال والتحقق من اتصال النظام.",
+      additionalInfo: "System integrity check required.",
+      additionalInfoAr: "مطلوب فحص سلامة النظام."
+    };
+  }
+  
+  // Sensor troubles (380-393)
+  if (eventCode.startsWith('38') || categoryLower.includes('sensor')) {
+    return {
+      riskScore: 55,
+      riskLevel: "medium" as const,
+      actions: ["check_system_status", "schedule_maintenance", "investigate_remotely", "acknowledge_and_monitor"] as AlertAction[],
+      responseTime: "1 hour",
+      responseTimeAr: "ساعة واحدة",
+      details: `Sensor health issue detected at ${siteName} - ${sensorName} may require maintenance.`,
+      detailsAr: `تم اكتشاف مشكلة في صحة المستشعر في ${siteName} - ${sensorName} قد يتطلب صيانة.`,
+      reasoning: `Sensor malfunctions can lead to false alarms or missed genuine threats, requiring prompt maintenance to ensure system reliability.`,
+      reasoningAr: `يمكن أن تؤدي أعطال المستشعرات إلى إنذارات كاذبة أو تفويت تهديدات حقيقية، مما يتطلب صيانة سريعة لضمان موثوقية النظام.`,
+      actionGuidance: "Schedule technician visit to inspect and repair sensor.",
+      actionGuidanceAr: "جدولة زيارة فني لفحص وإصلاح المستشعر.",
+      additionalInfo: "Maintenance recommended to prevent system degradation.",
+      additionalInfoAr: "الصيانة الموصى بها لمنع تدهور النظام."
+    };
+  }
+  
+  // 24-hour non-burglary (150-163)
+  if (eventCode.startsWith('15') || eventCode.startsWith('16')) {
+    return {
+      riskScore: 70,
+      riskLevel: "high" as const,
+      actions: ["dispatch_security_team", "verify_with_camera", "contact_site_manager", "investigate_remotely"] as AlertAction[],
+      responseTime: "10 minutes",
+      responseTimeAr: "10 دقائق",
+      details: `Environmental hazard detected at ${siteName} - ${sensorName} triggered.`,
+      detailsAr: `تم اكتشاف خطر بيئي في ${siteName} - ${sensorName} تم تفعيله.`,
+      reasoning: `24-hour zones monitor critical environmental conditions that can cause property damage or safety hazards.`,
+      reasoningAr: `تراقب مناطق 24 ساعة الظروف البيئية الحرجة التي يمكن أن تسبب أضرارًا في الممتلكات أو مخاطر على السلامة.`,
+      actionGuidance: "Verify conditions and dispatch appropriate response team based on hazard type.",
+      actionGuidanceAr: "التحقق من الظروف وإرسال فريق الاستجابة المناسب بناءً على نوع الخطر.",
+      additionalInfo: "Environmental monitoring active.",
+      additionalInfoAr: "المراقبة البيئية نشطة."
+    };
+  }
+  
+  // Default for unknown events
+  return {
+    riskScore: 60,
+    riskLevel: "medium" as const,
+    actions: ["verify_with_camera", "investigate_remotely", "acknowledge_and_monitor", "contact_site_manager"] as AlertAction[],
+    responseTime: "15 minutes",
+    responseTimeAr: "15 دقيقة",
+    details: `Security event detected at ${siteName}.`,
+    detailsAr: `تم اكتشاف حدث أمني في ${siteName}.`,
+    reasoning: `Standard security protocol requires verification and assessment before determining appropriate response level.`,
+    reasoningAr: `يتطلب بروتوكول الأمان القياسي التحقق والتقييم قبل تحديد مستوى الاستجابة المناسب.`,
+    actionGuidance: "Monitor situation and escalate if threat is confirmed.",
+    actionGuidanceAr: "مراقبة الوضع والتصعيد في حالة تأكيد التهديد.",
+    additionalInfo: "Under investigation.",
+    additionalInfoAr: "قيد التحقيق."
   };
 }
 
@@ -445,13 +575,13 @@ function generateFalsePositivePatternFallback(
   const riskScore = 35; // Low risk due to false positive pattern
   const riskLevel: "low" | "medium" | "high" | "critical" = "low";
   
-  const summary = `**Recurring false alarm pattern detected** at *${siteName}* - **${sensorName}** in *${areaName}* has triggered **${totalAlerts} times** in the last 24 hours. Previous **${falsePositiveCount} alerts** from this zone were verified as **false positives**. The **${sensorType}** may require maintenance or recalibration to prevent continued false alarms.`;
+  const summary = `**Recurring false alarm pattern detected** at **${siteName}** - **${sensorName}** in **${areaName}** has triggered **${totalAlerts} times** in the last 24 hours. Previous **${falsePositiveCount} alerts** from this sensor were verified as **false positives**. The **${sensorType}** at **${siteName}** may require maintenance or recalibration to prevent continued false alarms from this location.`;
   
-  const reasoning = `Analysis of recent activity shows a clear **false positive pattern** - the same sensor has triggered multiple times with **${falsePositiveCount}/${totalAlerts} previous alerts marked as false positives**. This suggests a technical issue rather than a genuine security threat. Recommend **acknowledge and monitor** rather than emergency dispatch, followed by **scheduled maintenance** to address the root cause.`;
+  const reasoning = `Analysis of recent activity from **${siteName}** shows a clear **false positive pattern** - the **${sensorName}** (${sensorType}) has triggered multiple times with **${falsePositiveCount}/${totalAlerts} previous alerts marked as false positives**. This suggests a **technical issue or environmental interference** at this specific location rather than a genuine security threat. Recommend **acknowledge and monitor** rather than emergency dispatch, followed by **scheduled maintenance** to address the root cause and restore sensor reliability at **${siteName}**.`;
   
-  const summaryAr = `تم اكتشاف **نمط إنذار كاذب متكرر** في *${siteName}* - **${sensorName}** في *${areaName}* تم تفعيله **${totalAlerts} مرة** خلال الـ 24 ساعة الماضية. تم التحقق من **${falsePositiveCount} تنبيهًا** سابقًا من هذه المنطقة على أنها **إنذارات كاذبة**. قد يتطلب **${sensorType}** صيانة أو إعادة معايرة لمنع استمرار الإنذارات الكاذبة.`;
+  const summaryAr = `تم اكتشاف **نمط إنذار كاذب متكرر** في **${siteName}** - **${sensorName}** في **${areaName}** تم تفعيله **${totalAlerts} مرة** خلال الـ 24 ساعة الماضية. تم التحقق من **${falsePositiveCount} تنبيهًا** سابقًا من هذا المستشعر على أنها **إنذارات كاذبة**. قد يتطلب **${sensorType}** في **${siteName}** صيانة أو إعادة معايرة لمنع استمرار الإنذارات الكاذبة من هذا الموقع.`;
   
-  const reasoningAr = `يُظهر تحليل النشاط الأخير **نمط إنذار كاذب** واضح - نفس المستشعر تم تفعيله عدة مرات مع **${falsePositiveCount}/${totalAlerts} تنبيهات سابقة تم تصنيفها كإنذارات كاذبة**. هذا يشير إلى مشكلة تقنية بدلاً من تهديد أمني حقيقي. نوصي **بالإقرار والمراقبة** بدلاً من الإرسال الطارئ، متبوعًا **بصيانة مجدولة** لمعالجة السبب الجذري.`;
+  const reasoningAr = `يُظهر تحليل النشاط الأخير من **${siteName}** **نمط إنذار كاذب** واضح - **${sensorName}** (${sensorType}) تم تفعيله عدة مرات مع **${falsePositiveCount}/${totalAlerts} تنبيهات سابقة تم تصنيفها كإنذارات كاذبة**. هذا يشير إلى **مشكلة تقنية أو تداخل بيئي** في هذا الموقع المحدد بدلاً من تهديد أمني حقيقي. نوصي **بالإقرار والمراقبة** بدلاً من الإرسال الطارئ، متبوعًا **بصيانة مجدولة** لمعالجة السبب الجذري واستعادة موثوقية المستشعر في **${siteName}**.`;
   
   return {
     summary,
@@ -460,11 +590,11 @@ function generateFalsePositivePatternFallback(
     recommendedActions: ["acknowledge_and_monitor", "schedule_maintenance", "reset_sensor", "check_system_status"],
     reasoning,
     estimatedResponseTime: "1 hour",
-    additionalContext: `False positive pattern confirmed. ${falsePositiveCount} of ${totalAlerts} recent alerts were false positives. Maintenance required.`,
+    additionalContext: `False positive pattern confirmed at ${siteName}. ${falsePositiveCount} of ${totalAlerts} recent alerts were false positives. ${sensorName} requires maintenance.`,
     summaryAr,
     reasoningAr,
     estimatedResponseTimeAr: "ساعة واحدة",
-    additionalContextAr: `تم تأكيد نمط الإنذار الكاذب. ${falsePositiveCount} من ${totalAlerts} تنبيهات حديثة كانت إنذارات كاذبة. الصيانة مطلوبة.`
+    additionalContextAr: `تم تأكيد نمط الإنذار الكاذب في ${siteName}. ${falsePositiveCount} من ${totalAlerts} تنبيهات حديثة كانت إنذارات كاذبة. ${sensorName} يتطلب صيانة.`
   };
 }
 
@@ -484,13 +614,13 @@ function generateEscalatingThreatFallback(
   const riskScore = 88; // High risk due to repeated real alerts
   const riskLevel: "critical" = "critical";
   
-  const summary = `**ESCALATING SECURITY SITUATION** at *${siteName}* - **${sensorName}** in *${areaName}* has triggered **${totalAlerts} times** in the last 24 hours. **${realAlertCount} alerts are REAL** (not marked false positive), indicating an **unresolved or escalating threat**. The **${sensorType}** continues to detect activity, suggesting persistent security concern requiring immediate response.`;
+  const summary = `**ESCALATING SECURITY SITUATION** at **${siteName}** - **${sensorName}** in **${areaName}** has triggered **${totalAlerts} times** in the last 24 hours. **${realAlertCount} alerts are REAL** (not marked false positive), indicating an **unresolved or escalating threat** at this location. The **${sensorType}** at **${siteName}** continues to detect activity during **${timeOfDay}** hours, suggesting persistent security concern requiring immediate on-site response.`;
   
-  const reasoning = `Critical pattern identified: **${realAlertCount} of ${totalAlerts} recent alerts are REAL** (not verified as false positives), indicating this is **NOT a false alarm pattern** but an **active, escalating situation**. Multiple genuine triggers from the same location suggest either an ongoing security breach, persistent intruder activity, or unresolved emergency. **IMMEDIATE dispatch required** - this pattern cannot be ignored.`;
+  const reasoning = `Critical pattern identified at **${siteName}**: **${realAlertCount} of ${totalAlerts} recent alerts are REAL** (not verified as false positives), indicating this is **NOT a false alarm pattern** but an **active, escalating situation** requiring immediate attention. Multiple genuine triggers from **${sensorName}** in **${areaName}** suggest either an **ongoing security breach**, **persistent intruder activity**, or **unresolved emergency** at this specific location. The fact that these are legitimate alerts (not marked false positive) indicates a serious security compromise at **${siteName}**. **IMMEDIATE dispatch of security and police required** - this escalating pattern at a high-value location cannot be ignored.`;
   
-  const summaryAr = `**حالة أمنية متصاعدة** في *${siteName}* - **${sensorName}** في *${areaName}* تم تفعيله **${totalAlerts} مرة** خلال الـ 24 ساعة الماضية. **${realAlertCount} تنبيهات حقيقية** (غير مصنفة كإنذارات كاذبة)، مما يشير إلى **تهديد غير محلول أو متصاعد**. يستمر **${sensorType}** في اكتشاف النشاط، مما يشير إلى مخاوف أمنية مستمرة تتطلب استجابة فورية.`;
+  const summaryAr = `**حالة أمنية متصاعدة** في **${siteName}** - **${sensorName}** في **${areaName}** تم تفعيله **${totalAlerts} مرة** خلال الـ 24 ساعة الماضية. **${realAlertCount} تنبيهات حقيقية** (غير مصنفة كإنذارات كاذبة)، مما يشير إلى **تهديد غير محلول أو متصاعد** في هذا الموقع. يستمر **${sensorType}** في **${siteName}** في اكتشاف النشاط خلال ساعات **${timeOfDay === 'Morning' ? 'الصباح' : timeOfDay === 'Afternoon' ? 'بعد الظهر' : timeOfDay === 'Evening' ? 'المساء' : 'الليل'}**، مما يشير إلى مخاوف أمنية مستمرة تتطلب استجابة فورية في الموقع.`;
   
-  const reasoningAr = `تم تحديد نمط حرج: **${realAlertCount} من ${totalAlerts} تنبيهات حديثة حقيقية** (غير مؤكدة كإنذارات كاذبة)، مما يشير إلى أن هذا **ليس نمط إنذار كاذب** ولكنه **موقف نشط ومتصاعد**. محفزات حقيقية متعددة من نفس الموقع تشير إما إلى اختراق أمني مستمر، أو نشاط متسلل مستمر، أو حالة طوارئ غير محلولة. **الإرسال الفوري مطلوب** - لا يمكن تجاهل هذا النمط.`;
+  const reasoningAr = `تم تحديد نمط حرج في **${siteName}**: **${realAlertCount} من ${totalAlerts} تنبيهات حديثة حقيقية** (غير مؤكدة كإنذارات كاذبة)، مما يشير إلى أن هذا **ليس نمط إنذار كاذب** ولكنه **موقف نشط ومتصاعد** يتطلب اهتمامًا فوريًا. محفزات حقيقية متعددة من **${sensorName}** في **${areaName}** تشير إما إلى **اختراق أمني مستمر**، أو **نشاط متسلل مستمر**، أو **حالة طوارئ غير محلولة** في هذا الموقع المحدد. حقيقة أن هذه تنبيهات شرعية (غير مصنفة كإنذارات كاذبة) تشير إلى اختراق أمني خطير في **${siteName}**. **الإرسال الفوري للأمن والشرطة مطلوب** - لا يمكن تجاهل هذا النمط المتصاعد في موقع عالي القيمة.`;
   
   return {
     summary,
@@ -499,10 +629,10 @@ function generateEscalatingThreatFallback(
     recommendedActions: ["dispatch_security_team", "dispatch_police", "verify_with_camera", "lockdown_area", "contact_site_manager"],
     reasoning,
     estimatedResponseTime: "immediate",
-    additionalContext: `CRITICAL: ${realAlertCount} real alerts in 24h. Escalating pattern confirmed. NOT a false alarm. Immediate action required.`,
+    additionalContext: `CRITICAL at ${siteName}: ${realAlertCount} real alerts in 24h from ${sensorName}. Escalating pattern confirmed. NOT a false alarm. Immediate action required.`,
     summaryAr,
     reasoningAr,
     estimatedResponseTimeAr: "فوري",
-    additionalContextAr: `حرج: ${realAlertCount} تنبيهات حقيقية في 24 ساعة. تم تأكيد النمط المتصاعد. ليس إنذارًا كاذبًا. مطلوب إجراء فوري.`
+    additionalContextAr: `حرج في ${siteName}: ${realAlertCount} تنبيهات حقيقية في 24 ساعة من ${sensorName}. تم تأكيد النمط المتصاعد. ليس إنذارًا كاذبًا. مطلوب إجراء فوري.`
   };
 }
