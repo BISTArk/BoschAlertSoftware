@@ -9,6 +9,7 @@ interface CameraStreamProps {
   cameraUsername?: string;
   cameraPassword?: string;
   cameraStreamPath?: string;
+  fallbackVideoUrl?: string;
   accountNumber: string;
   areaNumber?: string;
   zoneNumber?: string;
@@ -21,6 +22,7 @@ export function CameraStream({
   cameraUsername,
   cameraPassword,
   cameraStreamPath = "/stream1",
+  fallbackVideoUrl,
   accountNumber,
   areaNumber,
   zoneNumber,
@@ -70,6 +72,16 @@ export function CameraStream({
   const streamUrl = getStreamUrl();
 
   useEffect(() => {
+    // If no camera IP but fallback video exists, use it
+    if (!cameraIp && fallbackVideoUrl) {
+      setStreamStatus("loading");
+      if (videoRef.current) {
+        videoRef.current.src = fallbackVideoUrl;
+        videoRef.current.load();
+      }
+      return;
+    }
+
     if (!cameraIp) {
       setStreamStatus("unavailable");
       return;
@@ -259,7 +271,7 @@ export function CameraStream({
         videoRef.current.load();
       }
     };
-  }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath, streamUrl]);
+  }, [cameraIp, cameraPort, cameraUsername, cameraPassword, cameraStreamPath, streamUrl, fallbackVideoUrl]);
 
   const handleVideoError = () => {
     console.log("Video error, switching to MJPEG mode...");
@@ -320,9 +332,9 @@ export function CameraStream({
               <Video className="h-8 w-8 text-gray-500" />
             </div>
             <div>
-              <p className="text-sm font-medium text-gray-300">No Camera Configured</p>
+              <p className="text-sm font-medium text-gray-300">No Camera or Video Configured</p>
               <p className="text-xs text-gray-500 mt-1">
-                Add camera in Area Setup
+                Set up camera IP or add a fallback video in Area Setup
               </p>
             </div>
           </div>

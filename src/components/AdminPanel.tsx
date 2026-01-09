@@ -16,7 +16,8 @@ import {
   PlayCircle,
   CheckCircle2,
   XCircle,
-  Loader2
+  Loader2,
+  Radar
 } from "lucide-react";
 import {
   AlertDialog,
@@ -41,42 +42,49 @@ const SCENARIOS: Scenario[] = [
   {
     id: "recurring_false",
     name: "Recurring False Alarms",
-    description: "Area 01 Zone 08 (Lobby Motion) - 4 false alarms over 4 days",
+    description: "Branch 2 Area 03 Zone 08 - 4 false alarms over 4 days",
     icon: <RefreshCw className="h-5 w-5" />,
     color: "text-yellow-500"
   },
   {
     id: "communication",
     name: "Communication Failure",
-    description: "Area 01 panel disconnection for 2h 15m",
+    description: "Branch 2 Area 01 - Panel disconnection for 2h 15m",
     icon: <Radio className="h-5 w-5" />,
     color: "text-orange-500"
   },
   {
     id: "sequential",
     name: "Sequential Correlated Burglary",
-    description: "Area 02 Zone 03 (Window) - Burglary + Tamper (45s apart)",
+    description: "ATM Area 01 Zone 03 - Burglary + Tamper (45s apart)",
     icon: <AlertTriangle className="h-5 w-5" />,
     color: "text-red-500"
   },
   {
+    id: "motion",
+    name: "Motion Detection",
+    description: "ATM Area 01 Zone 05 - Repeated motion, potential loitering",
+    icon: <Radar className="h-5 w-5" />,
+    color: "text-blue-500"
+  },
+  {
     id: "fire",
     name: "Fire Emergency",
-    description: "Area 04→02 Zone 07 - Smoke spreading from basement",
+    description: "Branch 1 Area 01→02 Zone 07 - Smoke spreading from basement",
     icon: <Flame className="h-5 w-5" />,
     color: "text-red-600"
   },
   {
     id: "single_critical",
     name: "Medical Emergency",
-    description: "Area 03 Zone 05 - Medical panic button",
+    description: "Branch 2 Area 02 Zone 05 - Medical panic button",
     icon: <Heart className="h-5 w-5" />,
     color: "text-pink-500"
   },
   {
     id: "sensor_not_restored",
     name: "Sensor Not Restored",
-    description: "Area 02 Zone 04 (Back Door) - Open + lost supervision + low battery",
+    description: "Branch 1 Area 02 Zone 04 - Open + lost supervision + low battery",
     icon: <DoorOpen className="h-5 w-5" />,
     color: "text-purple-500"
   }

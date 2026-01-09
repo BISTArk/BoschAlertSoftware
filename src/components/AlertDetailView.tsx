@@ -623,6 +623,7 @@ export function AlertDetailView({ alertId, onBack }: AlertDetailViewProps) {
                 cameraUsername={areaData?.cameraUsername}
                 cameraPassword={areaData?.cameraPassword}
                 cameraStreamPath={areaData?.cameraStreamPath}
+                fallbackVideoUrl={areaData?.fallbackVideoUrl}
                 accountNumber={alert.accountNumber || ""}
                 areaNumber={alert.areaNumber}
                 zoneNumber={alert.zoneNumber}

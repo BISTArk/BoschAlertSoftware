@@ -52,6 +52,7 @@ export default defineSchema({
     cameraUsername: v.optional(v.string()), // Camera authentication username
     cameraPassword: v.optional(v.string()), // Camera authentication password
     cameraStreamPath: v.optional(v.string()), // RTSP stream path (e.g., "/stream1", "/h264/ch1/main/av_stream")
+    fallbackVideoUrl: v.optional(v.string()), // Fallback video URL when camera is not configured
     active: v.boolean(),
     createdAt: v.number(),
   }).index("by_site", ["siteId"])

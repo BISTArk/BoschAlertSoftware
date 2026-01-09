@@ -75,18 +75,24 @@ export function AreaFloorPlanView({
     } : "skip"
   );
 
-  // Fetch all alerts for this area
+  // Fetch all alerts for this area (excluding resolved alerts)
   const allAlerts = useQuery(api.alerts.getAlerts, {
     filters: accountNumber && areaNumber ? {
       accountNumber,
     } : {},
   });
 
-  // Filter alerts for this specific area
+  // Filter alerts for this specific area, excluding resolved alerts
   const areaAlerts = allAlerts?.page.filter(alert => 
     alert.accountNumber === accountNumber && 
-    alert.areaNumber === areaNumber
+    alert.areaNumber === areaNumber &&
+    alert.status !== "resolved" // Exclude resolved alerts
   ) || [];
+
+  // Create a set of zone numbers that have active alerts
+  const zonesWithAlerts = new Set(
+    areaAlerts.map(alert => normalizeZone(alert.zoneNumber)).filter(Boolean)
+  );
 
   // Get area data from database
   const getAreaData = () => {
@@ -174,16 +180,17 @@ export function AreaFloorPlanView({
         // Normalize both zone numbers for comparison
         const normalizedSensorZone = normalizeZone(sensorZone);
         const normalizedAlertZone = normalizeZone(zoneNumber);
-        const isActive = normalizedSensorZone === normalizedAlertZone;
+        const isCurrentAlert = normalizedSensorZone === normalizedAlertZone;
+        const hasAlert = zonesWithAlerts.has(normalizedSensorZone);
         const x = sensor.positionX;
         const y = sensor.positionY;
 
         // Draw sensor circle
         ctx.beginPath();
-        ctx.arc(x, y, isActive ? 20 : 15, 0, 2 * Math.PI);
+        ctx.arc(x, y, isCurrentAlert ? 20 : (hasAlert ? 17 : 15), 0, 2 * Math.PI);
         
-        if (isActive) {
-          // Highlight active sensor with pulsing effect
+        if (isCurrentAlert) {
+          // Highlight current alert sensor with pulsing effect
           ctx.fillStyle = getPriorityColor(priority);
           ctx.fill();
           
@@ -200,8 +207,24 @@ export function AreaFloorPlanView({
           ctx.globalAlpha = 0.3;
           ctx.stroke();
           ctx.globalAlpha = 1;
+        } else if (hasAlert) {
+          // Sensor has an active alert - make it red
+          ctx.fillStyle = "#dc2626"; // Red color for alerts
+          ctx.fill();
+          ctx.strokeStyle = "#ffffff";
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          
+          // Add a subtle glow for alert sensors
+          ctx.beginPath();
+          ctx.arc(x, y, 25, 0, 2 * Math.PI);
+          ctx.strokeStyle = "#dc2626";
+          ctx.lineWidth = 1;
+          ctx.globalAlpha = 0.2;
+          ctx.stroke();
+          ctx.globalAlpha = 1;
         } else {
-          // Normal sensor
+          // Normal sensor - no alert
           ctx.fillStyle = sensor.color || "#6b7280";
           ctx.fill();
           ctx.strokeStyle = "#ffffff";
@@ -211,13 +234,13 @@ export function AreaFloorPlanView({
 
         // Draw sensor label
         ctx.fillStyle = "#ffffff";
-        ctx.font = isActive ? "bold 14px sans-serif" : "12px sans-serif";
+        ctx.font = isCurrentAlert ? "bold 14px sans-serif" : (hasAlert ? "bold 12px sans-serif" : "12px sans-serif");
         ctx.textAlign = "center";
         ctx.fillText(sensor.name, x, y - 30);
         
         // Draw zone number
         ctx.font = "10px sans-serif";
-        ctx.fillStyle = "#9ca3af";
+        ctx.fillStyle = hasAlert ? "#fca5a5" : "#9ca3af"; // Lighter red for alert zones
         ctx.fillText(`Zone ${sensorZone}`, x, y - 15);
       });
     };
@@ -251,7 +274,7 @@ export function AreaFloorPlanView({
       drawSensors();
     };
 
-  }, [areaData, zoneNumber, priority, dbFloor, dbSensors]);
+  }, [areaData, zoneNumber, priority, dbFloor, dbSensors, zonesWithAlerts]);
 
   if (!areaData) {
     return (

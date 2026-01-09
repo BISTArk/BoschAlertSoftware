@@ -80,6 +80,7 @@ export function SiteMapSetup() {
   const [cameraUsername, setCameraUsername] = useState("");
   const [cameraPassword, setCameraPassword] = useState("");
   const [cameraStreamPath, setCameraStreamPath] = useState("/stream1");
+  const [fallbackVideoUrl, setFallbackVideoUrl] = useState("");
 
   const [sensorName, setSensorName] = useState("");
   const [sensorAccount, setSensorAccount] = useState("");
@@ -162,6 +163,7 @@ export function SiteMapSetup() {
         cameraUsername: cameraUsername || undefined,
         cameraPassword: cameraPassword || undefined,
         cameraStreamPath: cameraStreamPath || undefined,
+        fallbackVideoUrl: fallbackVideoUrl || undefined,
       });
     } else {
       if (!selectedSite) return;
@@ -177,6 +179,7 @@ export function SiteMapSetup() {
         cameraUsername: cameraUsername || undefined,
         cameraPassword: cameraPassword || undefined,
         cameraStreamPath: cameraStreamPath || undefined,
+        fallbackVideoUrl: fallbackVideoUrl || undefined,
       });
     }
 
@@ -189,6 +192,7 @@ export function SiteMapSetup() {
     setCameraUsername("");
     setCameraPassword("");
     setCameraStreamPath("/stream1");
+    setFallbackVideoUrl("");
     setEditingFloor(null);
     setShowFloorDialog(false);
   };
@@ -205,6 +209,7 @@ export function SiteMapSetup() {
     setCameraUsername(floor.cameraUsername || "");
     setCameraPassword(floor.cameraPassword || "");
     setCameraStreamPath(floor.cameraStreamPath || "/stream1");
+    setFallbackVideoUrl(floor.fallbackVideoUrl || "");
     
     // Pre-fill account number from the site
     if (sites) {
@@ -692,6 +697,12 @@ export function SiteMapSetup() {
           setFloorWidth("1200");
           setFloorHeight("800");
           setFloorPlanUrl("");
+          setCameraIp("");
+          setCameraPort("554");
+          setCameraUsername("");
+          setCameraPassword("");
+          setCameraStreamPath("/stream1");
+          setFallbackVideoUrl("");
         }
       }}>
         <DialogContent className="max-h-[90vh] flex flex-col">
@@ -837,6 +848,20 @@ export function SiteMapSetup() {
                   Common paths: /stream1, /cam/realmonitor, /h264/ch1/main/av_stream
                 </p>
               </div>
+
+              <div className="space-y-2 mt-4 pt-4 border-t">
+                <Label htmlFor="fallbackVideoUrl">Fallback Video URL (Optional)</Label>
+                <Input
+                  id="fallbackVideoUrl"
+                  type="url"
+                  value={fallbackVideoUrl}
+                  onChange={(e) => setFallbackVideoUrl(e.target.value)}
+                  placeholder="https://example.com/video.mp4"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Video to display when camera IP is not configured. Supports MP4, WebM formats.
+                </p>
+              </div>
             </div>
           </div>
 
@@ -855,6 +880,7 @@ export function SiteMapSetup() {
               setCameraUsername("");
               setCameraPassword("");
               setCameraStreamPath("/stream1");
+              setFallbackVideoUrl("");
             }}>
               Cancel
             </Button>

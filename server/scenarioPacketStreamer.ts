@@ -17,18 +17,20 @@ import * as readline from "readline";
 
 const TCP_HOST = "localhost";
 const TCP_PORT = 7800; // Must match siaReceiver.ts TCP_PORT
-const ACCOUNT = "3333";
+const ACCOUNT_ATM = "3333"; // ATM Location
+const ACCOUNT_BRANCH1 = "4444"; // Branch 1
+const ACCOUNT_BRANCH2 = "5555"; // Branch 2
 
 interface ScenarioPacket {
   payload: string;
-  description: string;
   timestamp: Date;
   delayAfterMs: number; // Delay before next packet (simulates real-world timing)
-  eventType: "recurring_false" | "communication" | "sequential" | "single_critical" | "sensor_not_restored" | "fire";
-  notes?: string;
+  eventType: "recurring_false" | "communication" | "sequential" | "single_critical" | "sensor_not_restored" | "fire" | "motion";
+  // Note: description and notes are NOT included - only payload is sent in real scenarios
+  // The system parses Contact ID codes from the payload to generate descriptions
 }
 
-type ScenarioType = "recurring_false" | "communication" | "sequential" | "fire" | "single_critical" | "sensor_not_restored";
+type ScenarioType = "recurring_false" | "communication" | "sequential" | "fire" | "single_critical" | "sensor_not_restored" | "motion";
 
 interface ScenarioOption {
   id: ScenarioType;
@@ -41,34 +43,39 @@ interface ScenarioOption {
  */
 const SCENARIOS: ScenarioOption[] = [
   {
-    id: "recurring_false",
-    name: "Recurring False Alarms",
-    description: "Area 01 Zone 08 (Lobby Motion) - 4 false alarms over 4 days"
-  },
-  {
-    id: "communication",
-    name: "Communication Failure",
-    description: "Area 01 panel disconnection for 2h 15m"
-  },
-  {
     id: "sequential",
-    name: "Sequential Correlated Burglary",
-    description: "Area 02 Zone 03 (Window) - Burglary + Tamper (45s apart)"
+    name: "[ATM] Burglary Attack",
+    description: "Account 3333 Area 01 Zone 03 - ATM Break-in + Tamper"
+  },
+  {
+    id: "motion",
+    name: "[ATM] Motion Detection",
+    description: "Account 3333 Area 01 Zone 05 - Suspicious activity near ATM"
   },
   {
     id: "fire",
-    name: "Fire Emergency",
-    description: "Area 04→02 Zone 07 - Smoke spreading from basement"
-  },
-  {
-    id: "single_critical",
-    name: "Medical Emergency",
-    description: "Area 03 Zone 05 - Medical panic button"
+    name: "[Branch 1] Fire Emergency",
+    description: "Account 4444 Area 01→02 - Smoke spreading through branch"
   },
   {
     id: "sensor_not_restored",
-    name: "Sensor Not Restored",
-    description: "Area 02 Zone 04 (Back Door) - Open + lost supervision + low battery"
+    name: "[Branch 1] Sensor Health Issue",
+    description: "Account 4444 Area 02 Zone 04 - Low battery + lost supervision"
+  },
+  {
+    id: "communication",
+    name: "[Branch 2] Communication Failure",
+    description: "Account 5555 Area 01 - Panel offline for 2h 15m"
+  },
+  {
+    id: "single_critical",
+    name: "[Branch 2] Medical Emergency",
+    description: "Account 5555 Area 02 Zone 05 - Panic button activated"
+  },
+  {
+    id: "recurring_false",
+    name: "[Branch 2] False Alarms Pattern",
+    description: "Account 5555 Area 03 Zone 08 - 4 false alarms over 4 days"
   }
 ];
 
@@ -108,22 +115,18 @@ function buildRecurringFalseAlarmPackets(): ScenarioPacket[] {
   day1Time.setHours(14, 30, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113201008", "0100"),
-    description: "DAY 1: Burglary Alarm - Interior - Area 01 Zone 08 (Lobby Motion) - FALSE ALARM #1",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18113203008", "0100"),
     timestamp: day1Time,
     delayAfterMs: 2000,
     eventType: "recurring_false",
-    notes: "First occurrence on Area 01 Zone 08 (Lobby Interior Motion). Resolution: Spider web on sensor"
   });
   
   const day1Restore = new Date(day1Time.getTime() + 5 * 60 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "38113201008", "0110"),
-    description: "DAY 1: Area 01 Zone 08 Restored",
+    payload: generatePacket(ACCOUNT_BRANCH2, "38113203008", "0110"),
     timestamp: day1Restore,
     delayAfterMs: 5000,
     eventType: "recurring_false",
-    notes: "Zone cleared manually"
   });
   
   // DAY 2: Second false alarm
@@ -131,22 +134,18 @@ function buildRecurringFalseAlarmPackets(): ScenarioPacket[] {
   day2Time.setHours(9, 15, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113201008", "0200"),
-    description: "DAY 2: Burglary Alarm - Interior - Area 01 Zone 08 (Lobby Motion) - FALSE ALARM #2",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18113203008", "0200"),
     timestamp: day2Time,
     delayAfterMs: 2000,
     eventType: "recurring_false",
-    notes: "Second occurrence - same zone. Resolution: Sensor sensitivity too high"
   });
   
   const day2Restore = new Date(day2Time.getTime() + 3 * 60 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "38113201008", "0210"),
-    description: "DAY 2: Area 01 Zone 08 Restored",
+    payload: generatePacket(ACCOUNT_BRANCH2, "38113203008", "0210"),
     timestamp: day2Restore,
     delayAfterMs: 5000,
     eventType: "recurring_false",
-    notes: "Zone cleared"
   });
   
   // DAY 3: Third false alarm
@@ -154,22 +153,18 @@ function buildRecurringFalseAlarmPackets(): ScenarioPacket[] {
   day3Time.setHours(16, 45, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113201008", "0300"),
-    description: "DAY 3: Burglary Alarm - Interior - Area 01 Zone 08 (Lobby Motion) - FALSE ALARM #3",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18113203008", "0300"),
     timestamp: day3Time,
     delayAfterMs: 2000,
     eventType: "recurring_false",
-    notes: "Third occurrence in 3 days. Resolution: HVAC air flow triggering motion sensor"
   });
   
   const day3Restore = new Date(day3Time.getTime() + 4 * 60 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "38113201008", "0310"),
-    description: "DAY 3: Area 01 Zone 08 Restored",
+    payload: generatePacket(ACCOUNT_BRANCH2, "38113203008", "0310"),
     timestamp: day3Restore,
     delayAfterMs: 5000,
     eventType: "recurring_false",
-    notes: "Zone cleared"
   });
   
   // CURRENT DAY: Fourth false alarm
@@ -177,22 +172,18 @@ function buildRecurringFalseAlarmPackets(): ScenarioPacket[] {
   recurringAlarmTime.setHours(14, 30, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113201008", "0500"),
-    description: "TODAY 2:30 PM: Burglary - Interior - Area 01 Zone 08 (Lobby Motion) - FALSE ALARM #4",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18113203008", "0500"),
     timestamp: recurringAlarmTime,
     delayAfterMs: 2000,
     eventType: "recurring_false",
-    notes: "Fourth occurrence in 4 days - AI should detect pattern, lower priority, suggest sensor replacement"
   });
   
   const recurringRestore = new Date(recurringAlarmTime.getTime() + 6 * 60 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "38113201008", "0510"),
-    description: "TODAY 2:36 PM: Area 01 Zone 08 Restored",
+    payload: generatePacket(ACCOUNT_BRANCH2, "38113203008", "0510"),
     timestamp: recurringRestore,
     delayAfterMs: 2000,
     eventType: "recurring_false",
-    notes: "Zone cleared - likely another false alarm"
   });
   
   return packets;
@@ -209,24 +200,20 @@ function buildCommunicationFailurePackets(): ScenarioPacket[] {
   commFailTime.setHours(8, 0, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18135401000", "0400"),
-    description: "TODAY 8:00 AM: Communication Failure - Telco 1 Fault - Area 01",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18135401000", "0400"),
     timestamp: commFailTime,
     delayAfterMs: 3000,
     eventType: "communication",
-    notes: "Panel lost communication with monitoring station. Network cable unplugged."
   });
   
   const commRestoreTime = new Date(commFailTime.getTime() + 2 * 60 * 60 * 1000 + 15 * 60 * 1000);
   commRestoreTime.setHours(10, 15, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "33135401000", "0410"),
-    description: "TODAY 10:15 AM: Communication Restored - Area 01",
+    payload: generatePacket(ACCOUNT_BRANCH2, "33135401000", "0410"),
     timestamp: commRestoreTime,
     delayAfterMs: 2000,
     eventType: "communication",
-    notes: "Network cable reconnected. Communication with monitoring station restored."
   });
   
   return packets;
@@ -243,22 +230,18 @@ function buildSequentialBurglaryPackets(): ScenarioPacket[] {
   realBurglaryTime.setHours(15, 45, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113102003", "0600"),
-    description: "TODAY 3:45 PM: REAL BURGLARY - Perimeter - Area 02 Zone 03 (Office Window West)",
+    payload: generatePacket(ACCOUNT_ATM, "18113101003", "0600"),
     timestamp: realBurglaryTime,
     delayAfterMs: 1000,
     eventType: "sequential",
-    notes: "CRITICAL: Actual intrusion attempt. Window sensor triggered on Area 02 Zone 03."
   });
   
   const tamperTime = new Date(realBurglaryTime.getTime() + 45 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "18113702003", "0610"),
-    description: "TODAY 3:45:45 PM: Tamper Alarm - Area 02 Zone 03 (Office Window West)",
+    payload: generatePacket(ACCOUNT_ATM, "18113701003", "0610"),
     timestamp: tamperTime,
     delayAfterMs: 2000,
     eventType: "sequential",
-    notes: "CRITICAL: Tamper detected 45s after breach on Area 02 Zone 03. AI correlate as active intrusion."
   });
   
   return packets;
@@ -275,32 +258,26 @@ function buildFireEmergencyPackets(): ScenarioPacket[] {
   fireTime.setHours(15, 30, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18111004007", "0650"),
-    description: "TODAY 3:30 PM: FIRE ALARM - Smoke Detector - Area 04 Zone 007 (Basement Smoke Detector)",
+    payload: generatePacket(ACCOUNT_BRANCH1, "18111001007", "0650"),
     timestamp: fireTime,
     delayAfterMs: 1000,
     eventType: "fire",
-    notes: "CRITICAL: Smoke detected in basement on Area 04 Zone 007. Possible electrical fire."
   });
   
   const fireSpreadTime = new Date(fireTime.getTime() + 30 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "18111002007", "0660"),
-    description: "TODAY 3:30:30 PM: FIRE ALARM - Smoke Detector - Area 02 Zone 007 (Office Smoke Detector)",
+    payload: generatePacket(ACCOUNT_BRANCH1, "18111002007", "0660"),
     timestamp: fireSpreadTime,
     delayAfterMs: 2000,
     eventType: "fire",
-    notes: "CRITICAL: Second smoke alarm 30s later on Area 02 Zone 007. AI should correlate as fire spreading up from basement."
   });
   
   const fireTroubleTime = new Date(fireSpreadTime.getTime() + 15 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "18137304007", "0670"),
-    description: "TODAY 3:30:45 PM: Fire Trouble - Area 04 Zone 007 (Basement Smoke Detector)",
+    payload: generatePacket(ACCOUNT_BRANCH1, "18137301007", "0670"),
     timestamp: fireTroubleTime,
     delayAfterMs: 2000,
     eventType: "fire",
-    notes: "Fire trouble signal from basement detector - sensor may be damaged by fire or battery failing under alarm condition."
   });
   
   return packets;
@@ -317,12 +294,10 @@ function buildMedicalEmergencyPackets(): ScenarioPacket[] {
   medicalTime.setHours(16, 0, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18110003005", "0700"),
-    description: "TODAY 4:00 PM: Medical Emergency - Area 03 Zone 005 (Medical Emergency Button)",
+    payload: generatePacket(ACCOUNT_BRANCH2, "18110002005", "0700"),
     timestamp: medicalTime,
     delayAfterMs: 2000,
     eventType: "single_critical",
-    notes: "CRITICAL: Medical panic button pressed on Area 03 Zone 005. Immediate dispatch required."
   });
   
   return packets;
@@ -338,35 +313,61 @@ function buildSensorNotRestoredPackets(): ScenarioPacket[] {
   const zoneOpenTime = new Date(now);
   zoneOpenTime.setHours(16, 30, 0, 0);
   
-  // packets.push({
-  //   payload: generatePacket(ACCOUNT, "18113402004", "0800"),
-  //   description: "TODAY 4:30 PM: Burglary - Entry/Exit - Area 02 Zone 004 (Back Door Delivery)",
-  //   timestamp: zoneOpenTime,
-  //   delayAfterMs: 3000,
-  //   eventType: "sensor_not_restored",
-  //   notes: "Area 02 Zone 004 (back door) triggered but will not restore - sensor malfunction or door left open"
-  // });
-  
   const lostSupervisionTime = new Date(zoneOpenTime.getTime() + 1.5 * 60 * 60 * 1000);
   lostSupervisionTime.setHours(18, 0, 0, 0);
   
   packets.push({
-    payload: generatePacket(ACCOUNT, "18138102004", "0810"),
-    description: "TODAY 6:00 PM: Loss of Supervision - RF - Area 02 Zone 004",
+    payload: generatePacket(ACCOUNT_BRANCH1, "18138102004", "0810"),
     timestamp: lostSupervisionTime,
     delayAfterMs: 2000,
     eventType: "sensor_not_restored",
-    notes: "ALERT: Area 02 Zone 004 not restored after 1.5 hours. Battery dead or door open. Immediate attention required."
   });
   
   const lowBatteryTime = new Date(lostSupervisionTime.getTime() + 2 * 60 * 1000);
   packets.push({
-    payload: generatePacket(ACCOUNT, "18138402004", "0820"),
-    description: "TODAY 6:02 PM: RF Low Battery - Area 02 Zone 004 (Back Door)",
+    payload: generatePacket(ACCOUNT_BRANCH1, "18138402004", "0820"),
     timestamp: lowBatteryTime,
     delayAfterMs: 2000,
     eventType: "sensor_not_restored",
-    notes: "Area 02 Zone 004 sensor battery critically low - explains lost supervision"
+  });
+  
+  return packets;
+}
+
+/**
+ * Build motion detection scenario packets (ATM Area 01 Zone 05)
+ */
+function buildMotionDetectionPackets(): ScenarioPacket[] {
+  const packets: ScenarioPacket[] = [];
+  const now = new Date();
+  
+  const motionTime = new Date(now);
+  motionTime.setHours(17, 15, 0, 0);
+  
+  // First motion detection
+  packets.push({
+    payload: generatePacket(ACCOUNT_ATM, "18113401005", "0900"),
+    timestamp: motionTime,
+    delayAfterMs: 1000,
+    eventType: "motion",
+  });
+  
+  // Second motion 30 seconds later (someone loitering)
+  const motion2Time = new Date(motionTime.getTime() + 30 * 1000);
+  packets.push({
+    payload: generatePacket(ACCOUNT_ATM, "18113401005", "0910"),
+    timestamp: motion2Time,
+    delayAfterMs: 2000,
+    eventType: "motion",
+  });
+  
+  // Restore after person leaves
+  const motionRestoreTime = new Date(motion2Time.getTime() + 2 * 60 * 1000);
+  packets.push({
+    payload: generatePacket(ACCOUNT_ATM, "38113401005", "0920"),
+    timestamp: motionRestoreTime,
+    delayAfterMs: 2000,
+    eventType: "motion",
   });
   
   return packets;
@@ -380,6 +381,8 @@ function buildScenarioPackets(selectedScenarios: ScenarioType[]): ScenarioPacket
   
   for (const scenario of selectedScenarios) {
     let scenarioPackets: ScenarioPacket[] = [];
+    
+    console.log(`\n🔍 Processing scenario: "${scenario}"`);
     
     switch (scenario) {
       case "recurring_false":
@@ -400,8 +403,14 @@ function buildScenarioPackets(selectedScenarios: ScenarioType[]): ScenarioPacket
       case "sensor_not_restored":
         scenarioPackets = buildSensorNotRestoredPackets();
         break;
+      case "motion":
+        scenarioPackets = buildMotionDetectionPackets();
+        break;
+      default:
+        console.log(`⚠️  Unknown scenario: "${scenario}"`);
     }
     
+    console.log(`   Generated ${scenarioPackets.length} packets for "${scenario}"`);
     allPackets = allPackets.concat(scenarioPackets);
   }
   
@@ -523,7 +532,7 @@ async function streamScenarioPackets(selectedScenarios?: ScenarioType[]) {
     
     console.log("\n" + "─".repeat(100));
     console.log(`Target: ${TCP_HOST}:${TCP_PORT}`);
-    console.log(`Account: ${ACCOUNT}`);
+    console.log(`Accounts: ATM (3333), Branch 1 (4444), Branch 2 (5555)`);
     console.log("─".repeat(100) + "\n");
 
     const packets = buildScenarioPackets(selectedScenarios);
@@ -547,26 +556,24 @@ async function streamScenarioPackets(selectedScenarios?: ScenarioType[]) {
       try {
         console.log(`\n[${i + 1}/${packets.length}] 📅 ${packet.timestamp.toLocaleString()}`);
         console.log(`🏷️  Type: ${packet.eventType.toUpperCase().replace(/_/g, ' ')}`);
-        console.log(`📝 ${packet.description}`);
-        if (packet.notes) {
-          console.log(`💡 ${packet.notes}`);
-        }
-        console.log(`📤 Payload: ${packet.payload}`);
+        console.log(`� Payload: ${packet.payload}`);
+        console.log(`   (Description will be parsed from Contact ID code in payload)`);
         
         await sendPacket(packet.payload);
         sentCount++;
         
         // For recurring false alarms, prompt user to mark manually
+        // Skip the 4th alarm (last one) as it's the "current" alarm for demo
         if (packet.eventType === "recurring_false" && 
-            packet.description.includes("FALSE ALARM") &&
-            !packet.description.includes("#4")) {
+            packet.payload.includes("18113203008") &&
+            (packet.payload.includes("0100") || packet.payload.includes("0200") || packet.payload.includes("0300"))) {
           console.log("\n⚠️  ACTION REQUIRED: Go to the UI and mark this alert as FALSE POSITIVE");
           console.log("   Reason suggestions:");
-          if (packet.description.includes("#1")) {
+          if (packet.payload.includes("0100")) {
             console.log("   → 'Spider web on sensor'");
-          } else if (packet.description.includes("#2")) {
+          } else if (packet.payload.includes("0200")) {
             console.log("   → 'Sensor sensitivity too high'");
-          } else if (packet.description.includes("#3")) {
+          } else if (packet.payload.includes("0300")) {
             console.log("   → 'HVAC air flow triggering sensor'");
           }
           console.log("   Then press Enter to continue...");
@@ -605,23 +612,26 @@ async function streamScenarioPackets(selectedScenarios?: ScenarioType[]) {
     // Show AI analysis expectations for selected scenarios
     console.log("\n🎯 AI ANALYSIS EXPECTATIONS:\n");
     
-    if (selectedScenarios.includes("recurring_false")) {
-      console.log("  • Area 01 Zone 08 pattern: AI should detect recurring false alarms (if marked), suggest lower priority");
-    }
-    if (selectedScenarios.includes("communication")) {
-      console.log("  • Area 01 communication: Note panel was offline 2h 15m");
-    }
     if (selectedScenarios.includes("sequential")) {
-      console.log("  • Area 02 Zone 03 burglary+tamper: Correlate as active intrusion (HIGH PRIORITY)");
+      console.log("  • [ATM 3333] Area 01 Zone 03: Correlate burglary+tamper as active ATM break-in (HIGH PRIORITY)");
+    }
+    if (selectedScenarios.includes("motion")) {
+      console.log("  • [ATM 3333] Area 01 Zone 05: Repeated motion detection - potential loitering");
     }
     if (selectedScenarios.includes("fire")) {
-      console.log("  • Area 04→02 Zone 07 fire: Correlate sequential smoke alarms as fire spreading (CRITICAL)");
-    }
-    if (selectedScenarios.includes("single_critical")) {
-      console.log("  • Area 03 Zone 05 medical: Recommend immediate emergency dispatch");
+      console.log("  • [Branch 1 4444] Area 01→02: Correlate sequential smoke alarms as fire spreading (CRITICAL)");
     }
     if (selectedScenarios.includes("sensor_not_restored")) {
-      console.log("  • Area 02 Zone 04 not restored: Flag sensor battery issue and open door risk");
+      console.log("  • [Branch 1 4444] Area 02 Zone 04: Flag sensor battery issue and supervision loss");
+    }
+    if (selectedScenarios.includes("communication")) {
+      console.log("  • [Branch 2 5555] Area 01: Note panel was offline 2h 15m");
+    }
+    if (selectedScenarios.includes("single_critical")) {
+      console.log("  • [Branch 2 5555] Area 02 Zone 05: Medical panic - immediate emergency dispatch");
+    }
+    if (selectedScenarios.includes("recurring_false")) {
+      console.log("  • [Branch 2 5555] Area 03 Zone 08: AI should detect false alarm pattern (if marked)");
     }
     
     console.log("\n" + "═".repeat(100) + "\n");
@@ -666,7 +676,7 @@ export async function handleScenarioRequest(scenarios: string[]): Promise<void> 
   
   console.log("\n" + "─".repeat(100));
   console.log(`Target: ${TCP_HOST}:${TCP_PORT}`);
-  console.log(`Account: ${ACCOUNT}`);
+  console.log(`Accounts: ATM (${ACCOUNT_ATM}), Branch 1 (${ACCOUNT_BRANCH1}), Branch 2 (${ACCOUNT_BRANCH2})`);
   console.log("─".repeat(100) + "\n");
 
   const packets = buildScenarioPackets(scenarioTypes);
@@ -690,11 +700,8 @@ export async function handleScenarioRequest(scenarios: string[]): Promise<void> 
     try {
       console.log(`\n[${i + 1}/${packets.length}] 📅 ${packet.timestamp.toLocaleString()}`);
       console.log(`🏷️  Type: ${packet.eventType.toUpperCase().replace(/_/g, ' ')}`);
-      console.log(`📝 ${packet.description}`);
-      if (packet.notes) {
-        console.log(`💡 ${packet.notes}`);
-      }
-      console.log(`📤 Payload: ${packet.payload}`);
+      console.log(`� Payload: ${packet.payload}`);
+      console.log(`   (Description will be parsed from Contact ID code in payload)`);
       
       await sendPacket(packet.payload);
       sentCount++;

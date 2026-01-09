@@ -89,6 +89,7 @@ export const createFloor = mutation({
     cameraUsername: v.optional(v.string()),
     cameraPassword: v.optional(v.string()),
     cameraStreamPath: v.optional(v.string()),
+    fallbackVideoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("floors", {
@@ -104,6 +105,7 @@ export const createFloor = mutation({
       cameraUsername: args.cameraUsername,
       cameraPassword: args.cameraPassword,
       cameraStreamPath: args.cameraStreamPath,
+      fallbackVideoUrl: args.fallbackVideoUrl,
       active: true,
       createdAt: Date.now(),
     });
@@ -219,6 +221,7 @@ export const updateFloor = mutation({
     cameraUsername: v.optional(v.string()),
     cameraPassword: v.optional(v.string()),
     cameraStreamPath: v.optional(v.string()),
+    fallbackVideoUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { floorId, ...updates } = args;
