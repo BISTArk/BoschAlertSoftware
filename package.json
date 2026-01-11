@@ -10,8 +10,10 @@
     "preview": "vite preview",
     "server": "tsx server/siaReceiver.ts",
     "admin-api": "tsx server/adminApi.ts",
+    "camera-proxy": "tsx server/cameraProxy.ts",
     "convex:dev": "convex dev",
-    "sync-floor-plans": "tsx scripts/sync-floor-plans.ts"
+    "sync-floor-plans": "tsx scripts/sync-floor-plans.ts",
+    "download-map-tiles": "tsx scripts/download-map-tiles.ts"
   },
   "dependencies": {
     "@ai-sdk/openai": "^3.0.1",

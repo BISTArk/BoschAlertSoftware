@@ -38,3 +38,6 @@ public/floor-plans/*.jpg
 public/floor-plans/*.jpeg
 public/floor-plans/*.svg
 !public/floor-plans/README.md
+
+# Map tiles - downloaded automatically via npm run download-map-tiles
+public/map-tiles/

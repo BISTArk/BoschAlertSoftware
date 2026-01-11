@@ -16,6 +16,9 @@ start "SIA Receiver Server" cmd /k "npm run server"
 echo Starting Admin API Server...
 start "Admin API Server" cmd /k "npm run admin-api"
 
+echo Starting Camera Proxy Server...
+start "Camera Proxy Server" cmd /k "npm run camera-proxy"
+
 echo.
 echo ========================================
 echo All servers starting in separate windows

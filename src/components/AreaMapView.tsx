@@ -104,7 +104,10 @@ export function AreaMapView({ alerts }: AreaMapViewProps) {
       >
         <TileLayer
           attribution="© OpenStreetMap contributors"
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          url="/map-tiles/{z}/{x}/{y}.png"
+          errorTileUrl="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          maxZoom={15}
+          minZoom={11}
         />
 
         {/* Show all site markers from database */}
