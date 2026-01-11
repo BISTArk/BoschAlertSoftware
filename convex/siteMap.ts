@@ -374,3 +374,23 @@ export const updateGuardLocation = mutation({
     });
   },
 });
+
+// Get all floors with their URLs (for sync script)
+export const getAllFloorsWithUrls = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("floors").collect();
+  },
+});
+
+// Update floor plan URL
+export const updateFloorPlanUrl = mutation({
+  args: {
+    floorId: v.id("floors"),
+    floorPlanUrl: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.floorId, {
+      floorPlanUrl: args.floorPlanUrl,
+    });
+  },
+});

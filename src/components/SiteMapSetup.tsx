@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../convex/_generated/api";
 import type { Id } from "../../convex/_generated/dataModel";
@@ -32,6 +32,21 @@ export function SiteMapSetup() {
   const [showSensorDialog, setShowSensorDialog] = useState(false);
   const [selectedSite, setSelectedSite] = useState<Id<"sites"> | null>(null);
   const [selectedFloor, setSelectedFloor] = useState<Id<"floors"> | null>(null);
+  
+  // Dynamically discover available floor plans using Vite's import.meta.glob
+  const availableFloorPlans = useMemo(() => {
+    const floorPlanModules = import.meta.glob('/public/floor-plans/*.{png,jpg,jpeg,svg}', { 
+      eager: true,
+      as: 'url' 
+    });
+    
+    return Object.keys(floorPlanModules).map(path => {
+      // Convert /public/floor-plans/image.png -> /floor-plans/image.png
+      const publicPath = path.replace('/public', '');
+      const filename = path.split('/').pop() || '';
+      return { path: publicPath, filename };
+    }).sort((a, b) => a.filename.localeCompare(b.filename));
+  }, []);
   
   // Edit mode states
   const [editingSite, setEditingSite] = useState<Id<"sites"> | null>(null);
@@ -770,16 +785,49 @@ export function SiteMapSetup() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="floorPlanUrl">Area Plan Image URL</Label>
+              <Label htmlFor="floorPlanUrl">Area Plan Image</Label>
+              
+              {/* Quick select from local floor plans */}
+              <Select 
+                value={floorPlanUrl.startsWith('/floor-plans/') ? floorPlanUrl : 'custom'}
+                onValueChange={(value) => {
+                  if (value !== 'custom') {
+                    setFloorPlanUrl(value);
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={
+                    availableFloorPlans.length > 0 
+                      ? "Select a local floor plan or enter URL below" 
+                      : "No local floor plans found - enter URL below or run npm run sync-floor-plans"
+                  } />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="custom">Custom URL (enter below)</SelectItem>
+                  {availableFloorPlans.length === 0 && (
+                    <SelectItem value="none" disabled>
+                      No local floor plans - run: npm run sync-floor-plans
+                    </SelectItem>
+                  )}
+                  {availableFloorPlans.map((plan) => (
+                    <SelectItem key={plan.path} value={plan.path}>
+                      {plan.filename} (Local)
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              
+              {/* Manual URL input */}
               <Input
                 id="floorPlanUrl"
-                type="url"
+                type="text"
                 value={floorPlanUrl}
                 onChange={(e) => setFloorPlanUrl(e.target.value)}
-                placeholder="https://example.com/floorplan.png"
+                placeholder="/floor-plans/your-image.png or https://example.com/floorplan.png"
               />
               <p className="text-xs text-muted-foreground">
-                Enter a publicly accessible image URL for the area plan background
+                💡 Local images work offline! {availableFloorPlans.length > 0 ? `Found ${availableFloorPlans.length} local floor plan${availableFloorPlans.length > 1 ? 's' : ''}.` : 'Run npm run sync-floor-plans to download images.'} Add custom images to <code className="bg-muted px-1 rounded">public/floor-plans/</code>
               </p>
             </div>
 

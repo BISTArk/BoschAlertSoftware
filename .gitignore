@@ -32,3 +32,9 @@ Zap6800_Logs/
 
 *.pdf
 *.docx
+# Floor plans - downloaded automatically via npm run sync-floor-plans
+public/floor-plans/*.png
+public/floor-plans/*.jpg
+public/floor-plans/*.jpeg
+public/floor-plans/*.svg
+!public/floor-plans/README.md
