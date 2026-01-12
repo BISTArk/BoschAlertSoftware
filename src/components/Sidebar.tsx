@@ -28,9 +28,9 @@ export function Sidebar({ currentView, onNavigate }: SidebarProps) {
     { id: "alerts", label: "Alerts", icon: AlertCircle, roles: ["guard", "head", "admin"] },
     { id: "analytics", label: "Analytics", icon: BarChart3, roles: ["head", "admin"] },
     { id: "locations", label: "Locations", icon: MapPin, roles: ["head", "admin"] },
-    { id: "sensors", label: "Sensors", icon: Radio, roles: ["head", "admin"] },
-    { id: "escalations", label: "Escalations", icon: TrendingUp, roles: ["head", "admin"] },
-    { id: "reports", label: "Reports", icon: FileText, roles: ["head", "admin"] },
+    // { id: "sensors", label: "Sensors", icon: Radio, roles: ["head", "admin"] },
+    // { id: "escalations", label: "Escalations", icon: TrendingUp, roles: ["head", "admin"] },
+    // { id: "reports", label: "Reports", icon: FileText, roles: ["head", "admin"] },
     { id: "admin", label: "Admin", icon: Settings, roles: ["admin"] },
   ];
 

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -47,9 +47,52 @@ const getHighestPriority = (alerts: Array<{ priority?: string }>): "critical" | 
 
 export function AreaMapView({ alerts }: AreaMapViewProps) {
   const mapRef = useRef<L.Map | null>(null);
+  const [isOnline, setIsOnline] = useState(true);
   
   // Fetch sites from database
   const sites = useQuery(api.siteMap.getSites);
+  
+  // Check internet connectivity
+  useEffect(() => {
+    const checkOnlineStatus = async () => {
+      setIsOnline(false);
+      return
+      try {
+        // Try to fetch a small tile from OpenStreetMap
+        const response = await fetch('https://a.tile.openstreetmap.org/0/0/0.png', {
+          mode: 'no-cors',
+          cache: 'no-store',
+        });
+        setIsOnline(true);
+      } catch (error) {
+        setIsOnline(false);
+      }
+    };
+
+    // Check initially
+    checkOnlineStatus();
+
+    // Set up event listeners for online/offline events
+    const handleOnline = () => {
+      checkOnlineStatus();
+    };
+    
+    const handleOffline = () => {
+      setIsOnline(false);
+    };
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    // Recheck periodically (every 30 seconds)
+    const interval = setInterval(checkOnlineStatus, 30000);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+      clearInterval(interval);
+    };
+  }, []);
   
   // Default center (Riyadh, Saudi Arabia)
   const defaultCenter: [number, number] = [24.7136, 46.6753];
@@ -104,10 +147,12 @@ export function AreaMapView({ alerts }: AreaMapViewProps) {
       >
         <TileLayer
           attribution="© OpenStreetMap contributors"
-          url="/map-tiles/{z}/{x}/{y}.png"
-          errorTileUrl="https://a.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          maxZoom={15}
-          minZoom={11}
+          url={isOnline 
+            ? "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            : "/map-tiles/{z}/{x}/{y}.png"
+          }
+          maxZoom={19}
+          minZoom={1}
         />
 
         {/* Show all site markers from database */}
@@ -211,6 +256,12 @@ export function AreaMapView({ alerts }: AreaMapViewProps) {
         </div>
         <div className="text-xs text-muted-foreground mt-1">
           {sites.length} Accounts • {alerts.filter(a => a.status !== "resolved").length} Active Alerts
+        </div>
+        <div className="flex items-center gap-1 text-xs mt-2">
+          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-orange-500'}`} />
+          <span className="text-muted-foreground">
+            {isOnline ? 'Online tiles' : 'Offline tiles'}
+          </span>
         </div>
       </div>
     </div>

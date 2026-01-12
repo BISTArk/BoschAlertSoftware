@@ -119,10 +119,16 @@ async function main() {
   console.log(`   Latitude:  ${bounds.minLat.toFixed(4)} to ${bounds.maxLat.toFixed(4)}`);
   console.log(`   Longitude: ${bounds.minLon.toFixed(4)} to ${bounds.maxLon.toFixed(4)}\n`);
 
-  // Zoom levels to download (11-15 for city-level detail)
-  const zoomLevels = [11, 12, 13, 14, 15];
+  // Zoom levels split into 4 tiers
+  const worldZoomLevels = [1, 2, 3, 4, 5];                   // Full world coverage
+  const largeRegionZoomLevels = [6, 7, 8];                   // Large region around area
+  const mediumRegionZoomLevels = [9, 10];                    // Medium region around area
+  const specificAreaZoomLevels = [11, 12, 13, 14, 15];      // Specific area only
   
-  console.log(`🎯 Will download tiles for zoom levels: ${zoomLevels.join(', ')}\n`);
+  console.log(`🌍 Zoom 1-5: Full world coverage`);
+  console.log(`🗺️  Zoom 6-8: Large region (±3° padding)`);
+  console.log(`📍 Zoom 9-10: Medium region (±1° padding)`);
+  console.log(`🎯 Zoom 11-15: Specific area\n`);
 
   let totalTiles = 0;
   let downloadedTiles = 0;
@@ -130,20 +136,198 @@ async function main() {
   let errorCount = 0;
 
   // Calculate total tiles needed
-  for (const zoom of zoomLevels) {
+  // World zoom levels - download all tiles
+  for (const zoom of worldZoomLevels) {
+    const tilesAtZoom = Math.pow(2, zoom);
+    totalTiles += tilesAtZoom * tilesAtZoom;
+  }
+  
+  // Large region - download with 3° padding
+  for (const zoom of largeRegionZoomLevels) {
+    const largeBounds = {
+      minLat: bounds.minLat - 3,
+      maxLat: bounds.maxLat + 3,
+      minLon: bounds.minLon - 3,
+      maxLon: bounds.maxLon + 3,
+    };
+    const minTile = latLonToTile(largeBounds.maxLat, largeBounds.minLon, zoom);
+    const maxTile = latLonToTile(largeBounds.minLat, largeBounds.maxLon, zoom);
+    totalTiles += (maxTile.x - minTile.x + 1) * (maxTile.y - minTile.y + 1);
+  }
+  
+  // Medium region - download with 1° padding
+  for (const zoom of mediumRegionZoomLevels) {
+    const mediumBounds = {
+      minLat: bounds.minLat - 1,
+      maxLat: bounds.maxLat + 1,
+      minLon: bounds.minLon - 1,
+      maxLon: bounds.maxLon + 1,
+    };
+    const minTile = latLonToTile(mediumBounds.maxLat, mediumBounds.minLon, zoom);
+    const maxTile = latLonToTile(mediumBounds.minLat, mediumBounds.maxLon, zoom);
+    totalTiles += (maxTile.x - minTile.x + 1) * (maxTile.y - minTile.y + 1);
+  }
+  
+  // Specific area - download exact area
+  for (const zoom of specificAreaZoomLevels) {
     const minTile = latLonToTile(bounds.maxLat, bounds.minLon, zoom);
     const maxTile = latLonToTile(bounds.minLat, bounds.maxLon, zoom);
     totalTiles += (maxTile.x - minTile.x + 1) * (maxTile.y - minTile.y + 1);
   }
 
   console.log(`📦 Total tiles to download: ${totalTiles}\n`);
-  console.log('⚠️  This may take 5-15 minutes. Please be patient...\n');
+  console.log('⚠️  This may take 10-30 minutes. Please be patient...\n');
 
   const startTime = Date.now();
 
-  // Download tiles for each zoom level
-  for (const zoom of zoomLevels) {
-    console.log(`🔽 Downloading zoom level ${zoom}...`);
+  // Download world zoom levels (full world coverage)
+  for (const zoom of worldZoomLevels) {
+    console.log(`🌍 Downloading zoom level ${zoom} (full world)...`);
+    
+    const tilesAtZoom = Math.pow(2, zoom);
+    const minTile = { x: 0, y: 0 };
+    const maxTile = { x: tilesAtZoom - 1, y: tilesAtZoom - 1 };
+    
+    const tilesThisLevel = tilesAtZoom * tilesAtZoom;
+    let levelProgress = 0;
+
+    for (let x = minTile.x; x <= maxTile.x; x++) {
+      for (let y = minTile.y; y <= maxTile.y; y++) {
+        const tilePath = path.join(TILES_DIR, zoom.toString(), x.toString(), `${y}.png`);
+        
+        if (fs.existsSync(tilePath)) {
+          skippedTiles++;
+        } else {
+          try {
+            await downloadTile(zoom, x, y);
+            downloadedTiles++;
+            
+            // Rate limiting: 1 request per 100ms (10 req/sec - conservative)
+            await delay(100);
+          } catch (error) {
+            errorCount++;
+            if (errorCount < 10) {
+              console.error(`   ⚠️  Failed: ${zoom}/${x}/${y} - ${error instanceof Error ? error.message : error}`);
+            }
+          }
+        }
+
+        levelProgress++;
+        
+        // Progress update every 50 tiles
+        if (levelProgress % 50 === 0) {
+          const percent = ((downloadedTiles + skippedTiles) / totalTiles * 100).toFixed(1);
+          process.stdout.write(`   Progress: ${percent}% (${downloadedTiles + skippedTiles}/${totalTiles})\r`);
+        }
+      }
+    }
+    
+    console.log(`   ✅ Zoom ${zoom} complete (${tilesThisLevel} tiles)\n`);
+  }
+
+  // Download large region zoom levels
+  for (const zoom of largeRegionZoomLevels) {
+    console.log(`🗺️  Downloading zoom level ${zoom} (large region, ±3° padding)...`);
+    
+    const largeBounds = {
+      minLat: bounds.minLat - 3,
+      maxLat: bounds.maxLat + 3,
+      minLon: bounds.minLon - 3,
+      maxLon: bounds.maxLon + 3,
+    };
+    const minTile = latLonToTile(largeBounds.maxLat, largeBounds.minLon, zoom);
+    const maxTile = latLonToTile(largeBounds.minLat, largeBounds.maxLon, zoom);
+    
+    const tilesThisLevel = (maxTile.x - minTile.x + 1) * (maxTile.y - minTile.y + 1);
+    let levelProgress = 0;
+
+    for (let x = minTile.x; x <= maxTile.x; x++) {
+      for (let y = minTile.y; y <= maxTile.y; y++) {
+        const tilePath = path.join(TILES_DIR, zoom.toString(), x.toString(), `${y}.png`);
+        
+        if (fs.existsSync(tilePath)) {
+          skippedTiles++;
+        } else {
+          try {
+            await downloadTile(zoom, x, y);
+            downloadedTiles++;
+            
+            // Rate limiting: 1 request per 100ms (10 req/sec - conservative)
+            await delay(100);
+          } catch (error) {
+            errorCount++;
+            if (errorCount < 10) {
+              console.error(`   ⚠️  Failed: ${zoom}/${x}/${y} - ${error instanceof Error ? error.message : error}`);
+            }
+          }
+        }
+
+        levelProgress++;
+        
+        // Progress update every 50 tiles
+        if (levelProgress % 50 === 0) {
+          const percent = ((downloadedTiles + skippedTiles) / totalTiles * 100).toFixed(1);
+          process.stdout.write(`   Progress: ${percent}% (${downloadedTiles + skippedTiles}/${totalTiles})\r`);
+        }
+      }
+    }
+    
+    console.log(`   ✅ Zoom ${zoom} complete (${tilesThisLevel} tiles)\n`);
+  }
+
+  // Download medium region zoom levels
+  for (const zoom of mediumRegionZoomLevels) {
+    console.log(`📍 Downloading zoom level ${zoom} (medium region, ±1° padding)...`);
+    
+    const mediumBounds = {
+      minLat: bounds.minLat - 1,
+      maxLat: bounds.maxLat + 1,
+      minLon: bounds.minLon - 1,
+      maxLon: bounds.maxLon + 1,
+    };
+    const minTile = latLonToTile(mediumBounds.maxLat, mediumBounds.minLon, zoom);
+    const maxTile = latLonToTile(mediumBounds.minLat, mediumBounds.maxLon, zoom);
+    
+    const tilesThisLevel = (maxTile.x - minTile.x + 1) * (maxTile.y - minTile.y + 1);
+    let levelProgress = 0;
+
+    for (let x = minTile.x; x <= maxTile.x; x++) {
+      for (let y = minTile.y; y <= maxTile.y; y++) {
+        const tilePath = path.join(TILES_DIR, zoom.toString(), x.toString(), `${y}.png`);
+        
+        if (fs.existsSync(tilePath)) {
+          skippedTiles++;
+        } else {
+          try {
+            await downloadTile(zoom, x, y);
+            downloadedTiles++;
+            
+            // Rate limiting: 1 request per 100ms (10 req/sec - conservative)
+            await delay(100);
+          } catch (error) {
+            errorCount++;
+            if (errorCount < 10) {
+              console.error(`   ⚠️  Failed: ${zoom}/${x}/${y} - ${error instanceof Error ? error.message : error}`);
+            }
+          }
+        }
+
+        levelProgress++;
+        
+        // Progress update every 50 tiles
+        if (levelProgress % 50 === 0) {
+          const percent = ((downloadedTiles + skippedTiles) / totalTiles * 100).toFixed(1);
+          process.stdout.write(`   Progress: ${percent}% (${downloadedTiles + skippedTiles}/${totalTiles})\r`);
+        }
+      }
+    }
+    
+    console.log(`   ✅ Zoom ${zoom} complete (${tilesThisLevel} tiles)\n`);
+  }
+
+  // Download specific area zoom levels
+  for (const zoom of specificAreaZoomLevels) {
+    console.log(`🎯 Downloading zoom level ${zoom} (specific area)...`);
     
     const minTile = latLonToTile(bounds.maxLat, bounds.minLon, zoom);
     const maxTile = latLonToTile(bounds.minLat, bounds.maxLon, zoom);
